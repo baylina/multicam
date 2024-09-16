@@ -11,6 +11,7 @@
       align-items: center;
       height: 100vh;
       background-color: #f0f0f0;
+      font-family: Arial, sans-serif;
     }
     .switch {
       position: relative;
@@ -51,16 +52,22 @@
     input:checked + .slider:before {
       transform: translateX(26px);
     }
+    p {
+      margin-left: 20px;
+      font-size: 18px;
+    }
   </style>
 </head>
 <body>
 
+<!-- Toggle Switch -->
 <label class="switch">
   <input type="checkbox" id="toggleSwitch">
   <span class="slider"></span>
 </label>
 <p id="statusText">Joan IN - OFF</p>
 
+<!-- Audio elements -->
 <audio id="onSound">
   <source src="getReady.aifc" type="audio/aiff">
   Your browser does not support the audio element.
