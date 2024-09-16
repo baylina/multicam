@@ -40,16 +40,21 @@
     if (isVibrating) {
       button.classList.add('on');
       button.textContent = "Joan IN - Vibrating";
-      vibrationInterval = setInterval(() => {
-        navigator.vibrate(200); // Vibrates for 200ms
-      }, 500); // Repeats every 500ms
+      vibratePattern();
     } else {
       button.classList.remove('on');
       button.textContent = "Joan IN";
-      clearInterval(vibrationInterval);
       navigator.vibrate(0); // Stops the vibration
+      clearInterval(vibrationInterval);
     }
   });
+
+  function vibratePattern() {
+    navigator.vibrate([200, 300]); // Vibrate 200ms, pause 300ms
+    vibrationInterval = setInterval(() => {
+      navigator.vibrate([200, 300]);
+    }, 1000); // Repeats every 1 second
+  }
 </script>
 
 </body>
