@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Joan IN Sound Toggle</title>
+  <title>Joan's Camera Toggle</title>
   <style>
     body {
       display: flex;
@@ -54,16 +54,17 @@
     input:checked + .slider:before {
       transform: translateX(80%); /* Moves the slider knob to the right */
     }
-    p {
-      font-size: 30px; /* Larger label text */
+    h1 {
+      font-size: 40px; /* Larger label text */
       text-align: center;
+      margin-bottom: 0;
     }
   </style>
 </head>
 <body>
 
 <!-- Label for the switch -->
-<p id="statusText">Joan IN - OFF</p>
+<h1>Joan's Camera</h1>
 
 <!-- Huge Toggle Switch -->
 <label class="switch">
@@ -84,23 +85,19 @@
 
 <script>
   const toggleSwitch = document.getElementById('toggleSwitch');
-  const statusText = document.getElementById('statusText');
   const onSound = document.getElementById('onSound');
   const offSound = document.getElementById('offSound');
   
   // Play the "OFF" sound on page load
   window.onload = function() {
-    statusText.textContent = "Joan IN - OFF";
     offSound.play(); // Play "OFF" sound on page load
   }
 
   // Add event listener for when the switch is toggled
   toggleSwitch.addEventListener('change', function () {
     if (this.checked) {
-      statusText.textContent = "Joan IN - ON";
       onSound.play(); // Play ON sound when toggled ON
     } else {
-      statusText.textContent = "Joan IN - OFF";
       offSound.play(); // Play OFF sound when toggled OFF
     }
   });
