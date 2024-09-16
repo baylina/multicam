@@ -12,51 +12,85 @@
       height: 100vh;
       background-color: #f0f0f0;
     }
-    #toggleButton {
-      font-size: 24px;
-      padding: 20px;
-      background-color: #007BFF;
-      color: white;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 60px;
+      height: 34px;
     }
-    #toggleButton.on {
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: 0.4s;
+      border-radius: 34px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 26px;
+      width: 26px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: 0.4s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
       background-color: #28a745;
+    }
+    input:checked + .slider:before {
+      transform: translateX(26px);
     }
   </style>
 </head>
 <body>
 
-<button id="toggleButton">Joan IN</button>
+<label class="switch">
+  <input type="checkbox" id="toggleSwitch">
+  <span class="slider"></span>
+</label>
+<p id="statusText">Joan IN - OFF</p>
 
 <audio id="onSound">
-  <source src="getReady.aifc" type="audio/mpeg">
+  <source src="getReady.aifc" type="audio/aiff">
   Your browser does not support the audio element.
 </audio>
 
 <audio id="offSound">
-  <source src="notLive.aifc" type="audio/mpeg">
+  <source src="notLive.aifc" type="audio/aiff">
   Your browser does not support the audio element.
 </audio>
 
 <script>
-  const button = document.getElementById('toggleButton');
+  const toggleSwitch = document.getElementById('toggleSwitch');
+  const statusText = document.getElementById('statusText');
   const onSound = document.getElementById('onSound');
   const offSound = document.getElementById('offSound');
-  let isToggled = false;
+  
+  // Play the "OFF" sound on page load
+  window.onload = function() {
+    statusText.textContent = "Joan IN - OFF";
+    offSound.play(); // Play "OFF" sound on page load
+  }
 
-  button.addEventListener('click', function () {
-    isToggled = !isToggled;
-
-    if (isToggled) {
-      button.classList.add('on');
-      button.textContent = "Joan IN - ON";
-      onSound.play(); // Play ON sound
+  // Add event listener for when the switch is toggled
+  toggleSwitch.addEventListener('change', function () {
+    if (this.checked) {
+      statusText.textContent = "Joan IN - ON";
+      onSound.play(); // Play ON sound when toggled ON
     } else {
-      button.classList.remove('on');
-      button.textContent = "Joan IN - OFF";
-      offSound.play(); // Play OFF sound
+      statusText.textContent = "Joan IN - OFF";
+      offSound.play(); // Play OFF sound when toggled OFF
     }
   });
 </script>
