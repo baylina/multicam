@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Joan's Camera Toggle</title>
+  <title>Joan IN Sound Toggle</title>
   <style>
     body {
       display: flex;
@@ -17,8 +17,8 @@
     .switch {
       position: relative;
       display: inline-block;
-      width: 100px; /* Fixed width */
-      height: 25px; /* Fixed height */
+      width: 80%; /* 80% of the page width */
+      height: 100px; /* At least 100px in height */
       margin-top: 20px;
     }
     .switch input {
@@ -35,15 +35,15 @@
       bottom: 0;
       background-color: #ccc;
       transition: 0.4s;
-      border-radius: 25px; /* Rounded edges */
+      border-radius: 50px;
     }
     .slider:before {
       position: absolute;
       content: "";
-      height: 17px; /* Slightly smaller than the slider height */
-      width: 17px;
-      left: 4px;
-      bottom: 4px;
+      height: 90px; /* Slightly smaller than the container height */
+      width: 90px;
+      left: 5px;
+      bottom: 5px;
       background-color: white;
       transition: 0.4s;
       border-radius: 50%;
@@ -52,21 +52,20 @@
       background-color: #28a745;
     }
     input:checked + .slider:before {
-      transform: translateX(75px); /* Move the slider knob */
+      transform: translateX(80%); /* Moves the slider knob to the right */
     }
-    h1 {
-      font-size: 40px; /* Larger label text */
+    p {
+      font-size: 30px; /* Larger label text */
       text-align: center;
-      margin-bottom: 0;
     }
   </style>
 </head>
 <body>
 
 <!-- Label for the switch -->
-<h1>Joan's Camera</h1>
+<p id="statusText">Joan IN - OFF</p>
 
-<!-- Fixed size Toggle Switch -->
+<!-- Huge Toggle Switch -->
 <label class="switch">
   <input type="checkbox" id="toggleSwitch">
   <span class="slider"></span>
@@ -85,19 +84,23 @@
 
 <script>
   const toggleSwitch = document.getElementById('toggleSwitch');
+  const statusText = document.getElementById('statusText');
   const onSound = document.getElementById('onSound');
   const offSound = document.getElementById('offSound');
   
   // Play the "OFF" sound on page load
   window.onload = function() {
+    statusText.textContent = "Joan IN - OFF";
     offSound.play(); // Play "OFF" sound on page load
   }
 
   // Add event listener for when the switch is toggled
   toggleSwitch.addEventListener('change', function () {
     if (this.checked) {
+      statusText.textContent = "Joan IN - ON";
       onSound.play(); // Play ON sound when toggled ON
     } else {
+      statusText.textContent = "Joan IN - OFF";
       offSound.play(); // Play OFF sound when toggled OFF
     }
   });
