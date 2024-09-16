@@ -153,37 +153,44 @@
   const offSound = document.getElementById('offSound');
   const lookAtMeButton = document.getElementById('lookAtMeButton');
 
-  // Reference to the 'sliderState' in the database
+  // Reference to the 'sliderState' and 'blinkState' in the database
   const sliderStateRef = database.ref('sliderState');
+  const blinkStateRef = database.ref('blinkState');
 
   // Sync the state of the slider with Firebase
   sliderStateRef.on('value', (snapshot) => {
     const sliderState = snapshot.val();
-    console.log("Firebase data:", sliderState); // Debugging
     toggleSwitch.checked = sliderState === "on"; // Sync the toggle switch state
 
     if (sliderState === "on") {
-      console.log("Playing onSound"); // Debugging
       onSound.play();
     } else {
-      console.log("Playing offSound"); // Debugging
       offSound.play();
+    }
+  });
+
+  // Sync the blinking state with Firebase
+  blinkStateRef.on('value', (snapshot) => {
+    const blinkState = snapshot.val();
+
+    if (blinkState === true) {
+      document.body.classList.add('blinking');
+      setTimeout(() => {
+        document.body.classList.remove('blinking');
+        blinkStateRef.set(false); // Reset the blink state after 5 seconds
+      }, 5000);
     }
   });
 
   // Update the database when the slider is toggled
   toggleSwitch.addEventListener('change', function () {
     const newState = this.checked ? "on" : "off";
-    console.log("Setting Firebase to:", newState); // Debugging
     sliderStateRef.set(newState); // Update the state in the Firebase database
   });
 
   // Blinking background when "Look at me" button is pressed
   lookAtMeButton.addEventListener('click', function() {
-    document.body.classList.add('blinking');
-    setTimeout(() => {
-      document.body.classList.remove('blinking');
-    }, 5000); // Stop blinking after 5 seconds
+    blinkStateRef.set(true); // Set blink state to true in Firebase
   });
 </script>
 
