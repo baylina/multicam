@@ -76,14 +76,14 @@
   </style>
 
   <!-- Firebase Configuration -->
-<script src="https://www.gstatic.com/firebasejs/9.16.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.16.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.16.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.16.0/firebase-database-compat.js"></script>
 </head>
 <body>
 
 <!-- Container holding label and slider -->
 <div class="container">
-  <span class="label">Joan's Camera 4</span>
+  <span class="label">Joan's Camera 5</span>
   <label class="switch">
     <input type="checkbox" id="toggleSwitch">
     <span class="slider round"></span>
@@ -102,11 +102,11 @@
 </audio>
 
 <script>
-  // Your web app's Firebase configuration
+  // Your web app's Firebase configuration with the correct regional database URL
   const firebaseConfig = {
     apiKey: "AIzaSyAYHKXIb37orJ7uofmdaN4OG-T0Ce-ZHv0",
     authDomain: "multicam-8bb9e.firebaseapp.com",
-    databaseURL: "https://multicam-8bb9e-default-rtdb.firebaseio.com", // Include databaseURL
+    databaseURL: "https://multicam-8bb9e-default-rtdb.europe-west1.firebasedatabase.app", // Correct regional database URL
     projectId: "multicam-8bb9e",
     storageBucket: "multicam-8bb9e.appspot.com",
     messagingSenderId: "434917041062",
@@ -114,7 +114,7 @@
   };
 
   // Initialize Firebase
-  const app = firebase.initializeApp(firebaseConfig);
+  firebase.initializeApp(firebaseConfig);
   const database = firebase.database();
 
   const toggleSwitch = document.getElementById('toggleSwitch');
@@ -127,14 +127,14 @@
   // Sync the state of the slider with Firebase
   sliderStateRef.on('value', (snapshot) => {
     const sliderState = snapshot.val();
-    console.log("Firebase data:", sliderState); // Debug
+    console.log("Firebase data:", sliderState); // Debugging
     toggleSwitch.checked = sliderState === "on"; // Sync the toggle switch state
 
     if (sliderState === "on") {
-      console.log("Playing onSound"); // Debug
+      console.log("Playing onSound"); // Debugging
       onSound.play();
     } else {
-      console.log("Playing offSound"); // Debug
+      console.log("Playing offSound"); // Debugging
       offSound.play();
     }
   });
@@ -142,7 +142,7 @@
   // Update the database when the slider is toggled
   toggleSwitch.addEventListener('change', function () {
     const newState = this.checked ? "on" : "off";
-    console.log("Setting Firebase to:", newState); // Debug
+    console.log("Setting Firebase to:", newState); // Debugging
     sliderStateRef.set(newState); // Update the state in the Firebase database
   });
 </script>
