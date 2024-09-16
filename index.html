@@ -7,6 +7,7 @@
   <style>
     body {
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       height: 100vh;
@@ -16,8 +17,9 @@
     .switch {
       position: relative;
       display: inline-block;
-      width: 60px;
-      height: 34px;
+      width: 80%; /* 80% of the page width */
+      height: 100px; /* At least 100px in height */
+      margin-top: 20px;
     }
     .switch input {
       opacity: 0;
@@ -33,15 +35,15 @@
       bottom: 0;
       background-color: #ccc;
       transition: 0.4s;
-      border-radius: 34px;
+      border-radius: 50px;
     }
     .slider:before {
       position: absolute;
       content: "";
-      height: 26px;
-      width: 26px;
-      left: 4px;
-      bottom: 4px;
+      height: 90px; /* Slightly smaller than the container height */
+      width: 90px;
+      left: 5px;
+      bottom: 5px;
       background-color: white;
       transition: 0.4s;
       border-radius: 50%;
@@ -50,22 +52,24 @@
       background-color: #28a745;
     }
     input:checked + .slider:before {
-      transform: translateX(26px);
+      transform: translateX(80%); /* Moves the slider knob to the right */
     }
     p {
-      margin-left: 20px;
-      font-size: 18px;
+      font-size: 30px; /* Larger label text */
+      text-align: center;
     }
   </style>
 </head>
 <body>
 
-<!-- Toggle Switch -->
+<!-- Label for the switch -->
+<p id="statusText">Joan IN - OFF</p>
+
+<!-- Huge Toggle Switch -->
 <label class="switch">
   <input type="checkbox" id="toggleSwitch">
   <span class="slider"></span>
 </label>
-<p id="statusText">Joan IN - OFF</p>
 
 <!-- Audio elements -->
 <audio id="onSound">
