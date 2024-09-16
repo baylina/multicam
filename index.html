@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -15,16 +16,16 @@
 
     /* Label styling */
     .label {
-      font-size: 24px; /* Adjust font size */
-      margin-right: 20px; /* Space between label and slider */
+      font-size: 24px;
+      margin-right: 20px;
     }
 
-    /* Slider switch styling - made wider */
+    /* Slider switch styling */
     .switch {
       position: relative;
       display: inline-block;
-      width: 160px; /* Increased width */
-      height: 68px; /* Height remains the same */
+      width: 160px;
+      height: 68px;
     }
 
     .switch input {
@@ -48,8 +49,8 @@
     .slider:before {
       position: absolute;
       content: "";
-      height: 60px; /* Bigger knob */
-      width: 60px;  /* Bigger knob */
+      height: 60px;
+      width: 60px;
       left: 4px;
       bottom: 4px;
       background-color: white;
@@ -62,7 +63,7 @@
     }
 
     input:checked + .slider:before {
-      transform: translateX(96px); /* Adjusted for wider slider */
+      transform: translateX(96px);
     }
 
     /* Rounded slider */
@@ -74,6 +75,10 @@
       border-radius: 50%;
     }
   </style>
+
+  <!-- Firebase Configuration -->
+  <script src="https://www.gstatic.com/firebasejs/9.16.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.16.0/firebase-database.js"></script>
 </head>
 <body>
 
@@ -98,22 +103,43 @@
 </audio>
 
 <script>
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyAYHKXIb37orJ7uofmdaN4OG-T0Ce-ZHv0",
+    authDomain: "multicam-8bb9e.firebaseapp.com",
+    projectId: "multicam-8bb9e",
+    storageBucket: "multicam-8bb9e.appspot.com",
+    messagingSenderId: "434917041062",
+    appId: "1:434917041062:web:f6fb6ed0f2e34967582567"
+  };
+
+  // Initialize Firebase
+  const app = firebase.initializeApp(firebaseConfig);
+  const database = firebase.database();
+
   const toggleSwitch = document.getElementById('toggleSwitch');
   const onSound = document.getElementById('onSound');
   const offSound = document.getElementById('offSound');
-  
-  // Play the "OFF" sound on page load
-  window.onload = function() {
-    offSound.play(); // Play "OFF" sound on page load
-  }
 
-  // Add event listener for when the switch is toggled
-  toggleSwitch.addEventListener('change', function () {
-    if (this.checked) {
-      onSound.play(); // Play ON sound when toggled ON
+  // Reference to the 'sliderState' in the database
+  const sliderStateRef = firebase.database().ref('sliderState');
+
+  // Sync the state of the slider with Firebase
+  sliderStateRef.on('value', (snapshot) => {
+    const sliderState = snapshot.val();
+    toggleSwitch.checked = sliderState === "on"; // Sync the toggle switch state
+
+    if (sliderState === "on") {
+      onSound.play();
     } else {
-      offSound.play(); // Play OFF sound when toggled OFF
+      offSound.play();
     }
+  });
+
+  // Update the database when the slider is toggled
+  toggleSwitch.addEventListener('change', function () {
+    const newState = this.checked ? "on" : "off";
+    sliderStateRef.set(newState); // Update the state in the Firebase database
   });
 </script>
 
