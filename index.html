@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Joan IN Vibration Toggle</title>
+  <title>Joan IN Sound Toggle</title>
   <style>
     body {
       display: flex;
@@ -30,31 +30,35 @@
 
 <button id="toggleButton">Joan IN</button>
 
+<audio id="onSound">
+  <source src="on-sound.mp3" type="audio/mpeg">
+  Your browser does not support the audio element.
+</audio>
+
+<audio id="offSound">
+  <source src="off-sound.mp3" type="audio/mpeg">
+  Your browser does not support the audio element.
+</audio>
+
 <script>
   const button = document.getElementById('toggleButton');
-  let isVibrating = false;
-  let vibrationInterval;
+  const onSound = document.getElementById('onSound');
+  const offSound = document.getElementById('offSound');
+  let isToggled = false;
 
   button.addEventListener('click', function () {
-    isVibrating = !isVibrating;
-    if (isVibrating) {
+    isToggled = !isToggled;
+
+    if (isToggled) {
       button.classList.add('on');
-      button.textContent = "Joan IN - Vibrating";
-      vibratePattern();
+      button.textContent = "Joan IN - ON";
+      onSound.play(); // Play ON sound
     } else {
       button.classList.remove('on');
-      button.textContent = "Joan IN";
-      navigator.vibrate(0); // Stops the vibration
-      clearInterval(vibrationInterval);
+      button.textContent = "Joan IN - OFF";
+      offSound.play(); // Play OFF sound
     }
   });
-
-  function vibratePattern() {
-    navigator.vibrate([200, 300]); // Vibrate 200ms, pause 300ms
-    vibrationInterval = setInterval(() => {
-      navigator.vibrate([200, 300]);
-    }, 1000); // Repeats every 1 second
-  }
 </script>
 
 </body>
