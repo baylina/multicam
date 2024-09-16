@@ -5,12 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Joan's Camera Toggle</title>
   <style>
-    /* Slider switch styling - made bigger */
+    /* Container to hold label and slider together */
+    .container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 50px;
+    }
+
+    /* Label styling */
+    .label {
+      font-size: 24px; /* Adjust font size */
+      margin-right: 20px; /* Space between label and slider */
+    }
+
+    /* Slider switch styling - made wider */
     .switch {
       position: relative;
       display: inline-block;
-      width: 120px; /* Increased width */
-      height: 68px; /* Increased height */
+      width: 160px; /* Increased width */
+      height: 68px; /* Height remains the same */
     }
 
     .switch input {
@@ -28,7 +42,7 @@
       bottom: 0;
       background-color: #ccc;
       transition: 0.4s;
-      border-radius: 68px; /* Adjust border radius to height */
+      border-radius: 68px;
     }
 
     .slider:before {
@@ -48,7 +62,7 @@
     }
 
     input:checked + .slider:before {
-      transform: translateX(52px); /* Adjusted to match larger size */
+      transform: translateX(96px); /* Adjusted for wider slider */
     }
 
     /* Rounded slider */
@@ -63,14 +77,14 @@
 </head>
 <body>
 
-<!-- Basic title -->
-<p id="statusText">Joan's Camera</p>
-
-<!-- Larger Slider Switch -->
-<label class="switch">
-  <input type="checkbox" id="toggleSwitch">
-  <span class="slider round"></span>
-</label>
+<!-- Container holding label and slider -->
+<div class="container">
+  <span class="label">Joan's Camera</span>
+  <label class="switch">
+    <input type="checkbox" id="toggleSwitch">
+    <span class="slider round"></span>
+  </label>
+</div>
 
 <!-- Audio elements -->
 <audio id="onSound">
@@ -85,13 +99,11 @@
 
 <script>
   const toggleSwitch = document.getElementById('toggleSwitch');
-  const statusText = document.getElementById('statusText');
   const onSound = document.getElementById('onSound');
   const offSound = document.getElementById('offSound');
   
   // Play the "OFF" sound on page load
   window.onload = function() {
-    statusText.textContent = "Joan's Camera";
     offSound.play(); // Play "OFF" sound on page load
   }
 
