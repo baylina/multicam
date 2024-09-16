@@ -127,11 +127,14 @@
   // Sync the state of the slider with Firebase
   sliderStateRef.on('value', (snapshot) => {
     const sliderState = snapshot.val();
+    console.log("Firebase data:", sliderState); // Debug
     toggleSwitch.checked = sliderState === "on"; // Sync the toggle switch state
 
     if (sliderState === "on") {
+      console.log("Playing onSound"); // Debug
       onSound.play();
     } else {
+      console.log("Playing offSound"); // Debug
       offSound.play();
     }
   });
@@ -139,6 +142,7 @@
   // Update the database when the slider is toggled
   toggleSwitch.addEventListener('change', function () {
     const newState = this.checked ? "on" : "off";
+    console.log("Setting Firebase to:", newState); // Debug
     sliderStateRef.set(newState); // Update the state in the Firebase database
   });
 </script>
