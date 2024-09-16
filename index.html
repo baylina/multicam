@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Joan IN Vibration Toggle</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #f0f0f0;
+    }
+    #toggleButton {
+      font-size: 24px;
+      padding: 20px;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    #toggleButton.on {
+      background-color: #28a745;
+    }
+  </style>
+</head>
+<body>
+
+<button id="toggleButton">Joan IN</button>
+
+<script>
+  const button = document.getElementById('toggleButton');
+  let isVibrating = false;
+  let vibrationInterval;
+
+  button.addEventListener('click', function () {
+    isVibrating = !isVibrating;
+    if (isVibrating) {
+      button.classList.add('on');
+      button.textContent = "Joan IN - Vibrating";
+      vibrationInterval = setInterval(() => {
+        navigator.vibrate(200); // Vibrates for 200ms
+      }, 500); // Repeats every 500ms
+    } else {
+      button.classList.remove('on');
+      button.textContent = "Joan IN";
+      clearInterval(vibrationInterval);
+      navigator.vibrate(0); // Stops the vibration
+    }
+  });
+</script>
+
+</body>
+</html>
