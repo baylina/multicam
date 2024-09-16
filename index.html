@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Joan's Camera Toggle</title>
   <style>
-    /* Slider switch styling */
+    /* Slider switch styling - made bigger */
     .switch {
       position: relative;
       display: inline-block;
-      width: 60px;
-      height: 34px;
+      width: 120px; /* Increased width */
+      height: 68px; /* Increased height */
     }
 
     .switch input {
@@ -28,17 +28,19 @@
       bottom: 0;
       background-color: #ccc;
       transition: 0.4s;
+      border-radius: 68px; /* Adjust border radius to height */
     }
 
     .slider:before {
       position: absolute;
       content: "";
-      height: 26px;
-      width: 26px;
+      height: 60px; /* Bigger knob */
+      width: 60px;  /* Bigger knob */
       left: 4px;
       bottom: 4px;
       background-color: white;
       transition: 0.4s;
+      border-radius: 50%;
     }
 
     input:checked + .slider {
@@ -46,12 +48,12 @@
     }
 
     input:checked + .slider:before {
-      transform: translateX(26px);
+      transform: translateX(52px); /* Adjusted to match larger size */
     }
 
     /* Rounded slider */
     .slider.round {
-      border-radius: 34px;
+      border-radius: 68px;
     }
 
     .slider.round:before {
@@ -64,7 +66,7 @@
 <!-- Basic title -->
 <p id="statusText">Joan's Camera</p>
 
-<!-- Slider switch -->
+<!-- Larger Slider Switch -->
 <label class="switch">
   <input type="checkbox" id="toggleSwitch">
   <span class="slider round"></span>
