@@ -73,6 +73,32 @@
     .slider.round:before {
       border-radius: 50%;
     }
+
+    /* Look at me button */
+    #lookAtMeButton {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 20px;
+      cursor: pointer;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+
+    body.blinking {
+      animation: blink 0.5s alternate infinite;
+    }
+
+    @keyframes blink {
+      0% {
+        background-color: red;
+      }
+      100% {
+        background-color: black;
+      }
+    }
+
   </style>
 
   <!-- Firebase Configuration -->
@@ -88,6 +114,11 @@
     <input type="checkbox" id="toggleSwitch">
     <span class="slider round"></span>
   </label>
+</div>
+
+<!-- Look at me button -->
+<div class="container">
+  <button id="lookAtMeButton">Look at me</button>
 </div>
 
 <!-- Audio elements -->
@@ -120,6 +151,7 @@
   const toggleSwitch = document.getElementById('toggleSwitch');
   const onSound = document.getElementById('onSound');
   const offSound = document.getElementById('offSound');
+  const lookAtMeButton = document.getElementById('lookAtMeButton');
 
   // Reference to the 'sliderState' in the database
   const sliderStateRef = database.ref('sliderState');
@@ -144,6 +176,14 @@
     const newState = this.checked ? "on" : "off";
     console.log("Setting Firebase to:", newState); // Debugging
     sliderStateRef.set(newState); // Update the state in the Firebase database
+  });
+
+  // Blinking background when "Look at me" button is pressed
+  lookAtMeButton.addEventListener('click', function() {
+    document.body.classList.add('blinking');
+    setTimeout(() => {
+      document.body.classList.remove('blinking');
+    }, 5000); // Stop blinking after 5 seconds
   });
 </script>
 
