@@ -17,8 +17,8 @@
     .switch {
       position: relative;
       display: inline-block;
-      width: 80%; /* 80% of the page width */
-      height: 100px; /* At least 100px in height */
+      width: 100px; /* Fixed width */
+      height: 25px; /* Fixed height */
       margin-top: 20px;
     }
     .switch input {
@@ -35,15 +35,15 @@
       bottom: 0;
       background-color: #ccc;
       transition: 0.4s;
-      border-radius: 50px;
+      border-radius: 25px; /* Rounded edges */
     }
     .slider:before {
       position: absolute;
       content: "";
-      height: 90px; /* Slightly smaller than the container height */
-      width: 90px;
-      left: 5px;
-      bottom: 5px;
+      height: 17px; /* Slightly smaller than the slider height */
+      width: 17px;
+      left: 4px;
+      bottom: 4px;
       background-color: white;
       transition: 0.4s;
       border-radius: 50%;
@@ -52,7 +52,7 @@
       background-color: #28a745;
     }
     input:checked + .slider:before {
-      transform: translateX(80%); /* Moves the slider knob to the right */
+      transform: translateX(75px); /* Move the slider knob */
     }
     h1 {
       font-size: 40px; /* Larger label text */
@@ -66,7 +66,7 @@
 <!-- Label for the switch -->
 <h1>Joan's Camera</h1>
 
-<!-- Huge Toggle Switch -->
+<!-- Fixed size Toggle Switch -->
 <label class="switch">
   <input type="checkbox" id="toggleSwitch">
   <span class="slider"></span>
@@ -93,15 +93,4 @@
     offSound.play(); // Play "OFF" sound on page load
   }
 
-  // Add event listener for when the switch is toggled
-  toggleSwitch.addEventListener('change', function () {
-    if (this.checked) {
-      onSound.play(); // Play ON sound when toggled ON
-    } else {
-      offSound.play(); // Play OFF sound when toggled OFF
-    }
-  });
-</script>
-
-</body>
-</html>
+  // Add event listener for when the switch is​⬤
