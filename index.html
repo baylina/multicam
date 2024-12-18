@@ -5,26 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Joan's Camera Toggle</title>
   <style>
-    /* Apply Verdana font family globally */
     body {
       font-family: Verdana, sans-serif;
     }
 
-    /* Container to hold label and slider together */
     .container {
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-top: 50px;
+      margin-top: 20px;
     }
 
-    /* Label styling */
     .label {
       font-size: 24px;
       margin-right: 20px;
     }
 
-    /* Slider switch styling */
     .switch {
       position: relative;
       display: inline-block;
@@ -70,7 +66,6 @@
       transform: translateX(96px);
     }
 
-    /* Rounded slider */
     .slider.round {
       border-radius: 68px;
     }
@@ -79,7 +74,6 @@
       border-radius: 50%;
     }
 
-    /* Look at me button */
     #lookAtMeButton {
       margin-top: 20px;
       padding: 10px 20px;
@@ -89,11 +83,15 @@
       color: white;
       border: none;
       border-radius: 5px;
-      font-family: Verdana, sans-serif; /* Ensure button uses Verdana */
+      font-family: Verdana, sans-serif;
     }
 
     body.blinking {
       animation: blink 0.5s alternate infinite;
+    }
+
+    body.warning {
+      background-color: red;
     }
 
     @keyframes blink {
@@ -104,7 +102,6 @@
         background-color: black;
       }
     }
-
   </style>
 
   <!-- Firebase Configuration -->
@@ -113,7 +110,7 @@
 </head>
 <body>
 
-<!-- Container holding label and slider -->
+<!-- Existing toggle and Look at me button -->
 <div class="container">
   <span class="label">Joan's Camera</span>
   <label class="switch">
@@ -122,28 +119,25 @@
   </label>
 </div>
 
-<!-- Look at me button -->
 <div class="container">
   <button id="lookAtMeButton">Look at me</button>
 </div>
 
-<!-- Audio elements -->
-<audio id="onSound">
-  <source src="getReady.aifc" type="audio/aiff">
-  Your browser does not support the audio element.
-</audio>
-
-<audio id="offSound">
-  <source src="notLive.aifc" type="audio/aiff">
-  Your browser does not support the audio element.
-</audio>
+<!-- New Warning toggle -->
+<div class="container">
+  <span class="label">Warning</span>
+  <label class="switch">
+    <input type="checkbox" id="warningToggle">
+    <span class="slider round"></span>
+  </label>
+</div>
 
 <script>
-  // Your web app's Firebase configuration with the correct regional database URL
+  // Firebase configuration
   const firebaseConfig = {
     apiKey: "AIzaSyAYHKXIb37orJ7uofmdaN4OG-T0Ce-ZHv0",
     authDomain: "multicam-8bb9e.firebaseapp.com",
-    databaseURL: "https://multicam-8bb9e-default-rtdb.europe-west1.firebasedatabase.app", // Correct regional database URL
+    databaseURL: "https://multicam-8bb9e-default-rtdb.europe-west1.firebasedatabase.app",
     projectId: "multicam-8bb9e",
     storageBucket: "multicam-8bb9e.appspot.com",
     messagingSenderId: "434917041062",
@@ -155,27 +149,26 @@
   const database = firebase.database();
 
   const toggleSwitch = document.getElementById('toggleSwitch');
-  const onSound = document.getElementById('onSound');
-  const offSound = document.getElementById('offSound');
   const lookAtMeButton = document.getElementById('lookAtMeButton');
+  const warningToggle = document.getElementById('warningToggle');
 
-  // Reference to the 'sliderState' and 'blinkState' in the database
   const sliderStateRef = database.ref('sliderState');
   const blinkStateRef = database.ref('blinkState');
+  const warningStateRef = database.ref('warningState');
 
-  // Sync the state of the slider with Firebase
+  // Sync slider state with Firebase
   sliderStateRef.on('value', (snapshot) => {
     const sliderState = snapshot.val();
-    toggleSwitch.checked = sliderState === "on"; // Sync the toggle switch state
+    toggleSwitch.checked = sliderState === "on";
 
     if (sliderState === "on") {
-      onSound.play();
+      document.body.classList.add('blinking');
     } else {
-      offSound.play();
+      document.body.classList.remove('blinking');
     }
   });
 
-  // Sync the blinking state with Firebase
+  // Sync blinking state with Firebase
   blinkStateRef.on('value', (snapshot) => {
     const blinkState = snapshot.val();
 
@@ -183,20 +176,38 @@
       document.body.classList.add('blinking');
       setTimeout(() => {
         document.body.classList.remove('blinking');
-        blinkStateRef.set(false); // Reset the blink state after 5 seconds
+        blinkStateRef.set(false); // Reset blink state
       }, 5000);
     }
   });
 
-  // Update the database when the slider is toggled
-  toggleSwitch.addEventListener('change', function () {
-    const newState = this.checked ? "on" : "off";
-    sliderStateRef.set(newState); // Update the state in the Firebase database
+  // Sync warning state with Firebase
+  warningStateRef.on('value', (snapshot) => {
+    const warningState = snapshot.val();
+    warningToggle.checked = warningState === "on";
+
+    if (warningState === "on") {
+      document.body.classList.add('warning');
+    } else {
+      document.body.classList.remove('warning');
+    }
   });
 
-  // Blinking background when "Look at me" button is pressed
-  lookAtMeButton.addEventListener('click', function() {
-    blinkStateRef.set(true); // Set blink state to true in Firebase
+  // Update slider state in Firebase
+  toggleSwitch.addEventListener('change', function () {
+    const newState = this.checked ? "on" : "off";
+    sliderStateRef.set(newState);
+  });
+
+  // Trigger blinking state in Firebase
+  lookAtMeButton.addEventListener('click', function () {
+    blinkStateRef.set(true);
+  });
+
+  // Update warning state in Firebase
+  warningToggle.addEventListener('change', function () {
+    const newState = this.checked ? "on" : "off";
+    warningStateRef.set(newState);
   });
 </script>
 
