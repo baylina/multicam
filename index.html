@@ -212,7 +212,7 @@
     <!-- Main Camera Toggle -->
     <div class="row">
       <div>
-        <div class="label">Joan's Camera 15</div>
+        <div class="label">Joan's Camera 16</div>
         <span class="status-indicator">Main Feed Control</span>
       </div>
       <label class="switch">
@@ -450,27 +450,40 @@
             unlockBtn.style.display = 'block';
             console.log("Button made visible, setting up click handler...");
 
-            // Use addEventListener for better compatibility
-            unlockBtn.addEventListener('click', function () {
-              console.log("🖱️  User clicked unlock button!");
-              console.log("Attempting to play remoteAudio...");
+            // Create global unlock function for inline onclick
+            window.unlockAudio = function () {
+              console.log("🖱️  UNLOCK FUNCTION CALLED!");
+              console.log("Attempting to create and play a test audio...");
 
-              remoteAudio.play()
+              // Create a silent audio to unlock the context
+              const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
+              silentAudio.play()
                 .then(() => {
-                  console.log("✅ Audio unlocked successfully!");
+                  console.log("✅ Audio context unlocked successfully!");
                   audioUnlocked = true;
-                  remoteAudio.pause();
                   unlockBtn.style.display = 'none';
-                  pttStatus.innerText = "Audio Enabled - Ready";
+                  pttStatus.innerText = "✅ Audio Enabled";
                   pttStatus.style.color = "#00fa9a";
+
+                  // Also unlock MSE audio if it exists
+                  if (remoteAudio) {
+                    remoteAudio.play().then(() => remoteAudio.pause()).catch(() => { });
+                  }
                 })
                 .catch(err => {
-                  console.error("❌ Failed to unlock audio:", err);
-                  alert("Failed to enable audio. Please try clicking again.");
+                  console.error("❌ Still failed to unlock:", err);
+                  alert("Por favor, haz clic en el botón de nuevo");
                 });
-            }, { once: true }); // Use once: true to prevent multiple listeners
+            };
+
+            // Also use addEventListener as backup
+            unlockBtn.addEventListener('click', function () {
+              console.log("🖱️  addEventListener triggered!");
+              window.unlockAudio();
+            }, { once: true });
 
             console.log("✅ Click handler set up successfully");
+            console.log("Global function window.unlockAudio created");
           } else {
             console.error("❌ Could not find unlock button element!");
           }
