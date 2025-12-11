@@ -179,7 +179,7 @@
     <!-- Main Camera Toggle -->
     <div class="row">
       <div>
-        <div class="label">Joan's Camera 35</div>
+        <div class="label">Joan's Camera 36</div>
         <span class="status-indicator">Main Feed Control</span>
       </div>
       <label class="switch">
@@ -194,30 +194,6 @@
     <div class="row" style="justify-content: center; flex-direction: column; gap: 10px;">
       <button id="pttButton">🎙️ Hold to Talk</button>
       <span id="pttStatus" class="status-indicator" style="text-align: center;">Channel Ready</span>
-
-      <!-- Audio unlock button -->
-      <button id="unlockAudioBtn" onclick="window.unlockAudio && window.unlockAudio()" style="
-        display: none; 
-        width: 100%;
-        padding: 1.5rem 2rem;
-        font-size: 1.3rem;
-        font-weight: 700;
-        background: linear-gradient(135deg, #ff9800, #f57c00); 
-        color: white;
-        border: 3px solid #ff5722;
-        border-radius: 16px;
-        cursor: pointer;
-        margin-top: 15px;
-        box-shadow: 0 6px 12px rgba(255,87,34,0.6);
-        font-family: 'Inter', sans-serif;
-        z-index: 1000;
-        pointer-events: auto;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        animation: pulse 2s infinite;
-      ">
-        🔊 CLICK AQUÍ PARA ACTIVAR AUDIO 🔊
-      </button>
     </div>
 
   </div>
@@ -463,8 +439,6 @@
     }
 
     // 2. Play Audio Stream (Receiver) - USES GLOBAL RECEIVER
-    let audioUnlockNeeded = false; // Track if we need unlock
-
     walkieStreamRef.on('child_added', (snapshot) => {
       const data = snapshot.val();
 
@@ -488,16 +462,9 @@
           })
           .catch(e => {
             console.error("❌ Audio play error (Autoplay blocked):", e);
-            // Only NOW show the unlock button
-            if (!audioUnlockNeeded) {
-              audioUnlockNeeded = true;
-              const btn = document.getElementById('unlockAudioBtn');
-              if (btn) {
-                btn.style.display = 'block';
-                pttStatus.innerText = "TAP ORANGE BUTTON!";
-                pttStatus.style.color = "#ff9800";
-              }
-            }
+            // Silent fail - user needs to interact with page first
+            pttStatus.innerText = "Tap Hold to Talk first";
+            pttStatus.style.color = "#ff9800";
           });
       }
     });
@@ -624,67 +591,6 @@
       const newState = this.checked ? "on" : "off";
       sliderStateRef.set(newState);
     });
-
-    // --- Global Unlock Function for Button ---
-    window.unlockAudio = function () {
-      console.log("🖱️  UNLOCK FUNCTION CALLED!");
-
-      // Immediate visual feedback
-      const btn = document.getElementById('unlockAudioBtn');
-      if (btn) {
-        btn.innerText = "⏳ UNLOCKING...";
-        btn.style.opacity = "0.6";
-        btn.disabled = true;
-      }
-
-      // 1. Resume Global Audio Context
-      const contextPromise = audioCtx.state === 'suspended'
-        ? audioCtx.resume()
-        : Promise.resolve();
-
-      contextPromise.then(() => {
-        console.log("✅ Global Context Ready");
-
-        // 2. Bless the Receiver Audio Object
-        const silentWav = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAAABkYXRhAAAAAA==';
-        receiverAudio.src = silentWav;
-
-        return receiverAudio.play();
-      })
-        .then(() => {
-          console.log("✅ Receiver Audio Blessed");
-          if (btn) {
-            btn.style.display = 'none'; // Hide completely on success
-          }
-
-          // 3. Unlock sound effects
-          if (getReadyAudio) {
-            getReadyAudio.muted = true;
-            getReadyAudio.play().then(() => {
-              getReadyAudio.pause();
-              getReadyAudio.currentTime = 0;
-              getReadyAudio.muted = false;
-            }).catch(() => { });
-          }
-          if (notLiveAudio) {
-            notLiveAudio.muted = true;
-            notLiveAudio.play().then(() => {
-              notLiveAudio.pause();
-              notLiveAudio.currentTime = 0;
-              notLiveAudio.muted = false;
-            }).catch(() => { });
-          }
-        })
-        .catch(e => {
-          console.error("Unlock failed:", e);
-          // Only show TAP AGAIN if it actually fails
-          if (btn) {
-            btn.innerText = "❌ TAP AGAIN";
-            btn.style.opacity = "1";
-            btn.disabled = false;
-          }
-        });
-    };
   </script>
 
 </body>
