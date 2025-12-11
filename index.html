@@ -179,7 +179,7 @@
     <!-- Main Camera Toggle -->
     <div class="row">
       <div>
-        <div class="label">Joan's Camera 34</div>
+        <div class="label">Joan's Camera 35</div>
         <span class="status-indicator">Main Feed Control</span>
       </div>
       <label class="switch">
@@ -503,9 +503,29 @@
     });
 
     // 3. Start Recording Logic (Uses Global audioCtx)
+    let hasTriedAutoUnlock = false;
+
     const initAndStartRecording = async () => {
       try {
         console.log("🎙️ Initializing Audio Recorder...");
+
+        // Auto-unlock audio on FIRST PTT press (user gesture)
+        if (!hasTriedAutoUnlock) {
+          hasTriedAutoUnlock = true;
+          try {
+            if (audioCtx.state === 'suspended') {
+              await audioCtx.resume();
+            }
+            // Also try to "bless" receiver audio silently
+            receiverAudio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAAABkYXRhAAAAAA==';
+            await receiverAudio.play();
+            receiverAudio.pause();
+            console.log("✅ Auto-unlocked audio on first PTT");
+          } catch (e) {
+            console.log("Auto-unlock failed, may need manual unlock:", e);
+          }
+        }
+
         // Ensure Global Context is Running
         if (audioCtx.state === 'suspended') {
           await audioCtx.resume();
@@ -617,16 +637,6 @@
         btn.disabled = true;
       }
 
-      // Safety timeout: if unlock doesn't complete in 3s, allow retry
-      const timeoutId = setTimeout(() => {
-        if (btn && btn.innerText === "⏳ UNLOCKING...") {
-          console.warn("Unlock timeout, allowing retry");
-          btn.innerText = "❌ TAP AGAIN";
-          btn.style.opacity = "1";
-          btn.disabled = false;
-        }
-      }, 3000);
-
       // 1. Resume Global Audio Context
       const contextPromise = audioCtx.state === 'suspended'
         ? audioCtx.resume()
@@ -636,7 +646,6 @@
         console.log("✅ Global Context Ready");
 
         // 2. Bless the Receiver Audio Object
-        // Use a slightly longer silent WAV for better iOS compatibility
         const silentWav = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAAABkYXRhAAAAAA==';
         receiverAudio.src = silentWav;
 
@@ -644,9 +653,8 @@
       })
         .then(() => {
           console.log("✅ Receiver Audio Blessed");
-          clearTimeout(timeoutId);
           if (btn) {
-            btn.style.display = 'none';
+            btn.style.display = 'none'; // Hide completely on success
           }
 
           // 3. Unlock sound effects
@@ -669,7 +677,7 @@
         })
         .catch(e => {
           console.error("Unlock failed:", e);
-          clearTimeout(timeoutId);
+          // Only show TAP AGAIN if it actually fails
           if (btn) {
             btn.innerText = "❌ TAP AGAIN";
             btn.style.opacity = "1";
