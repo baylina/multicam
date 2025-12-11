@@ -179,7 +179,7 @@
     <!-- Main Camera Toggle -->
     <div class="row">
       <div>
-        <div class="label">Joan's Camera 25</div>
+        <div class="label">Joan's Camera 26</div>
         <span class="status-indicator">Main Feed Control</span>
       </div>
       <label class="switch">
@@ -335,6 +335,9 @@
 
       async start() {
         this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        if (this.audioContext.state === 'suspended') {
+          await this.audioContext.resume();
+        }
         this.sampleRate = this.audioContext.sampleRate;
 
         this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -724,46 +727,10 @@
       isFirstLoad = false;
     });
 
-    // Sync blinking state with Firebase
-    blinkStateRef.on('value', (snapshot) => {
-      const blinkState = snapshot.val();
-
-      if (blinkState === true) {
-        document.body.classList.add('blinking');
-        setTimeout(() => {
-          document.body.classList.remove('blinking');
-          blinkStateRef.set(false); // Reset blink state
-        }, 5000);
-      }
-    });
-
-    // Sync warning state with Firebase
-    warningStateRef.on('value', (snapshot) => {
-      const warningState = snapshot.val();
-      warningToggle.checked = warningState === "on";
-
-      if (warningState === "on") {
-        document.body.classList.add('warning');
-      } else {
-        document.body.classList.remove('warning');
-      }
-    });
-
     // Update slider state in Firebase
     toggleSwitch.addEventListener('change', function () {
       const newState = this.checked ? "on" : "off";
       sliderStateRef.set(newState);
-    });
-
-    // Trigger blinking state in Firebase
-    lookAtMeButton.addEventListener('click', function () {
-      blinkStateRef.set(true);
-    });
-
-    // Update warning state in Firebase
-    warningToggle.addEventListener('change', function () {
-      const newState = this.checked ? "on" : "off";
-      warningStateRef.set(newState);
     });
   </script>
 
