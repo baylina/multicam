@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -58,11 +59,11 @@
       border-radius: 50%;
     }
 
-    input:checked + .slider {
+    input:checked+.slider {
       background-color: #28a745;
     }
 
-    input:checked + .slider:before {
+    input:checked+.slider:before {
       transform: translateX(96px);
     }
 
@@ -98,6 +99,7 @@
       0% {
         background-color: red;
       }
+
       100% {
         background-color: black;
       }
@@ -108,108 +110,126 @@
   <script src="https://www.gstatic.com/firebasejs/9.16.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.16.0/firebase-database-compat.js"></script>
 </head>
+
 <body>
 
-<!-- Existing toggle and Look at me button -->
-<div class="container">
-  <span class="label">Joan's Camera</span>
-  <label class="switch">
-    <input type="checkbox" id="toggleSwitch">
-    <span class="slider round"></span>
-  </label>
-</div>
+  <!-- Existing toggle and Look at me button -->
+  <div class="container">
+    <span class="label">Joan's Camera 3</span>
+    <label class="switch">
+      <input type="checkbox" id="toggleSwitch">
+      <span class="slider round"></span>
+    </label>
+  </div>
 
-<div class="container">
-  <button id="lookAtMeButton">Look at me</button>
-</div>
+  <div class="container">
+    <button id="lookAtMeButton">Look at me</button>
+  </div>
 
-<!-- New Warning toggle -->
-<div class="container">
-  <span class="label">Warning</span>
-  <label class="switch">
-    <input type="checkbox" id="warningToggle">
-    <span class="slider round"></span>
-  </label>
-</div>
+  <!-- New Warning toggle -->
+  <div class="container">
+    <span class="label">Warning</span>
+    <label class="switch">
+      <input type="checkbox" id="warningToggle">
+      <span class="slider round"></span>
+    </label>
+  </div>
 
-<script>
-  // Firebase configuration
-  const firebaseConfig = {
-    apiKey: "AIzaSyAYHKXIb37orJ7uofmdaN4OG-T0Ce-ZHv0",
-    authDomain: "multicam-8bb9e.firebaseapp.com",
-    databaseURL: "https://multicam-8bb9e-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "multicam-8bb9e",
-    storageBucket: "multicam-8bb9e.appspot.com",
-    messagingSenderId: "434917041062",
-    appId: "1:434917041062:web:f6fb6ed0f2e34967582567"
-  };
+  <script>
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAYHKXIb37orJ7uofmdaN4OG-T0Ce-ZHv0",
+      authDomain: "multicam-8bb9e.firebaseapp.com",
+      databaseURL: "https://multicam-8bb9e-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "multicam-8bb9e",
+      storageBucket: "multicam-8bb9e.appspot.com",
+      messagingSenderId: "434917041062",
+      appId: "1:434917041062:web:f6fb6ed0f2e34967582567"
+    };
 
-  // Initialize Firebase
-  firebase.initializeApp(firebaseConfig);
-  const database = firebase.database();
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
 
-  const toggleSwitch = document.getElementById('toggleSwitch');
-  const lookAtMeButton = document.getElementById('lookAtMeButton');
-  const warningToggle = document.getElementById('warningToggle');
+    const toggleSwitch = document.getElementById('toggleSwitch');
+    const lookAtMeButton = document.getElementById('lookAtMeButton');
+    const warningToggle = document.getElementById('warningToggle');
 
-  const sliderStateRef = database.ref('sliderState');
-  const blinkStateRef = database.ref('blinkState');
-  const warningStateRef = database.ref('warningState');
+    const sliderStateRef = database.ref('sliderState');
+    const blinkStateRef = database.ref('blinkState');
+    const warningStateRef = database.ref('warningState');
 
-  // Sync slider state with Firebase
-  sliderStateRef.on('value', (snapshot) => {
-    const sliderState = snapshot.val();
-    toggleSwitch.checked = sliderState === "on";
+    const getReadyAudio = new Audio('getReady.mp3');
+    const notLiveAudio = new Audio('notLive.mp3');
+    let isFirstLoad = true;
 
-    if (sliderState === "on") {
-      document.body.classList.add('blinking');
-    } else {
-      document.body.classList.remove('blinking');
-    }
-  });
+    // Sync slider state with Firebase
+    sliderStateRef.on('value', (snapshot) => {
+      const sliderState = snapshot.val();
 
-  // Sync blinking state with Firebase
-  blinkStateRef.on('value', (snapshot) => {
-    const blinkState = snapshot.val();
+      // Play audio on state change, but skip the first load to avoid autoplay issues/unwanted noise
+      if (!isFirstLoad) {
+        if (sliderState === "on") {
+          getReadyAudio.play().catch(e => console.log("Audio play failed (maybe autoplay policy?):", e));
+        } else {
+          notLiveAudio.play().catch(e => console.log("Audio play failed (maybe autoplay policy?):", e));
+        }
+      }
 
-    if (blinkState === true) {
-      document.body.classList.add('blinking');
-      setTimeout(() => {
+      toggleSwitch.checked = sliderState === "on";
+
+      if (sliderState === "on") {
+        document.body.classList.add('blinking');
+      } else {
         document.body.classList.remove('blinking');
-        blinkStateRef.set(false); // Reset blink state
-      }, 5000);
-    }
-  });
+      }
 
-  // Sync warning state with Firebase
-  warningStateRef.on('value', (snapshot) => {
-    const warningState = snapshot.val();
-    warningToggle.checked = warningState === "on";
+      isFirstLoad = false;
+    });
 
-    if (warningState === "on") {
-      document.body.classList.add('warning');
-    } else {
-      document.body.classList.remove('warning');
-    }
-  });
+    // Sync blinking state with Firebase
+    blinkStateRef.on('value', (snapshot) => {
+      const blinkState = snapshot.val();
 
-  // Update slider state in Firebase
-  toggleSwitch.addEventListener('change', function () {
-    const newState = this.checked ? "on" : "off";
-    sliderStateRef.set(newState);
-  });
+      if (blinkState === true) {
+        document.body.classList.add('blinking');
+        setTimeout(() => {
+          document.body.classList.remove('blinking');
+          blinkStateRef.set(false); // Reset blink state
+        }, 5000);
+      }
+    });
 
-  // Trigger blinking state in Firebase
-  lookAtMeButton.addEventListener('click', function () {
-    blinkStateRef.set(true);
-  });
+    // Sync warning state with Firebase
+    warningStateRef.on('value', (snapshot) => {
+      const warningState = snapshot.val();
+      warningToggle.checked = warningState === "on";
 
-  // Update warning state in Firebase
-  warningToggle.addEventListener('change', function () {
-    const newState = this.checked ? "on" : "off";
-    warningStateRef.set(newState);
-  });
-</script>
+      if (warningState === "on") {
+        document.body.classList.add('warning');
+      } else {
+        document.body.classList.remove('warning');
+      }
+    });
+
+    // Update slider state in Firebase
+    toggleSwitch.addEventListener('change', function () {
+      const newState = this.checked ? "on" : "off";
+      sliderStateRef.set(newState);
+    });
+
+    // Trigger blinking state in Firebase
+    lookAtMeButton.addEventListener('click', function () {
+      blinkStateRef.set(true);
+    });
+
+    // Update warning state in Firebase
+    warningToggle.addEventListener('change', function () {
+      const newState = this.checked ? "on" : "off";
+      warningStateRef.set(newState);
+    });
+  </script>
 
 </body>
+
 </html>

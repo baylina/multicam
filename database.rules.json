@@ -1,0 +1,15 @@
+{
+  "rules": {
+    ".read": true,
+    ".write": false,
+    "sliderState": {
+      ".write": "newData.isString() && (newData.val() === 'on' || newData.val() === 'off')"
+    },
+    "blinkState": {
+      ".write": "newData.isBoolean()"
+    },
+    "warningState": {
+      ".write": "newData.isString() && (newData.val() === 'on' || newData.val() === 'off')"
+    }
+  }
+}
