@@ -198,7 +198,7 @@
     <!-- Main Camera Toggle -->
     <div class="row">
       <div>
-        <div class="label">Joan's Camera 13</div>
+        <div class="label">Joan's Camera 14</div>
         <span class="status-indicator">Main Feed Control</span>
       </div>
       <label class="switch">
@@ -484,24 +484,14 @@
 
       if (data.user !== myUserId) {
         console.log("✅ Audio from another user, attempting to play...");
-        if (useStreamingMode) {
-          // STREAMING: Append chunks to MSE
-          console.log("📡 STREAMING MODE: Appending to MSE");
-          const arrayBuffer = base64ToArrayBuffer(data.audio);
-          bufferQueue.push(arrayBuffer);
-          processQueue();
 
-          // Only try to play if audio is unlocked
-          if (audioUnlocked && remoteAudio && remoteAudio.paused) {
-            console.log("▶️  Starting playback...");
-            remoteAudio.play().catch(e => console.log("Play failed:", e));
-          } else if (!audioUnlocked) {
-            console.log("🔒 Audio locked - user must click unlock button to hear audio");
-          }
-        } else {
-          // OFFLINE: Play complete audio file (data URL format)
-          console.log("💾 OFFLINE MODE: Creating Audio element");
-          const mimeType = data.mimeType || 'audio/webm'; // Fallback to webm
+        // Check if this is a complete file (has mimeType) or a chunk (no mimeType)
+        const isCompleteFile = !!data.mimeType;
+
+        if (isCompleteFile) {
+          // COMPLETE FILE: Play as audio element (works everywhere)
+          console.log("💾 COMPLETE FILE MODE: Creating Audio element");
+          const mimeType = data.mimeType || 'audio/webm';
           const dataUrl = 'data:' + mimeType + ';base64,' + data.audio;
           console.log("Data URL created, length:", dataUrl.length, "MIME:", mimeType);
 
@@ -517,6 +507,21 @@
           audio.play()
             .then(() => console.log("✅ Audio playing!"))
             .catch(e => console.error("❌ Audio play error:", e));
+
+        } else if (useStreamingMode) {
+          // STREAMING CHUNKS: Append to MSE (legacy mode, not currently used)
+          console.log("📡 STREAMING MODE: Appending to MSE");
+          const arrayBuffer = base64ToArrayBuffer(data.audio);
+          bufferQueue.push(arrayBuffer);
+          processQueue();
+
+          // Only try to play if audio is unlocked
+          if (audioUnlocked && remoteAudio && remoteAudio.paused) {
+            console.log("▶️  Starting playback...");
+            remoteAudio.play().catch(e => console.log("Play failed:", e));
+          } else if (!audioUnlocked) {
+            console.log("🔒 Audio locked - user must click unlock button to hear audio");
+          }
         }
       } else {
         console.log("⏭️  Skipping my own audio (echo prevention)");
