@@ -179,7 +179,7 @@
     <!-- Main Camera Toggle -->
     <div class="row">
       <div>
-        <div class="label">Joan's Camera 26</div>
+        <div class="label">Joan's Camera 27</div>
         <span class="status-indicator">Main Feed Control</span>
       </div>
       <label class="switch">
@@ -300,15 +300,23 @@
         touch-action: manipulation;
     `;
 
-    // 1. Listen to Channel Status (Mutex)
+    // 1. Listen to Channel Status (Mutex) & Auto-Reset Hung Channel
     walkieStatusRef.on('value', (snapshot) => {
       const status = snapshot.val();
+
+      // AUTO-RESET: If channel is busy for > 30 seconds, force clear it
+      if (status && (Date.now() - status.timestamp > 30000)) {
+        console.log("⚠️ Channel timed out! Resetting...");
+        walkieStatusRef.set(null);
+        return;
+      }
+
       if (!status) {
         updatePttUI('idle');
       } else if (status.user === myUserId) {
         // I obtained the lock!
-        if (!isRecording) startRecording(); // Start mic if not already
         updatePttUI('talking');
+        // Note: Recording starts in the mousedown handler now to ensure user gesture
       } else {
         // Someone else has the lock
         updatePttUI('busy', "Someone");
@@ -439,292 +447,26 @@
 
     // --- STREAMING MODE (Desktop Chrome/Firefox) ---
     // Although we force WAV sending now, we keep this structure in case we want to revert to streaming later,
-    // or if we receive legacy streaming data from old clients.
-    let bufferQueue = [];
-    let sourceBuffer = null;
-    let remoteAudio = null;
-    let mediaSource = null;
+    const sliderState = snapshot.val();
 
-    const processQueue = () => {
-      if (sourceBuffer && !sourceBuffer.updating && bufferQueue.length > 0) {
-        const data = bufferQueue.shift();
-        try {
-          sourceBuffer.appendBuffer(data);
-        } catch (e) {
-          console.error("Error appending buffer:", e);
-        }
+    // Play audio on state change, but skip the first load to avoid autoplay issues/unwanted noise
+    if (!isFirstLoad) {
+      if (sliderState === "on") {
+        getReadyAudio.play().catch(e => console.log("Audio play failed (maybe autoplay policy?):", e));
+      } else {
+        notLiveAudio.play().catch(e => console.log("Audio play failed (maybe autoplay policy?):", e));
       }
-    };
-
-    const base64ToArrayBuffer = (base64) => {
-      const binary_string = window.atob(base64);
-      const len = binary_string.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) {
-        bytes[i] = binary_string.charCodeAt(i);
-      }
-      return bytes.buffer;
-    };
-
-    let audioUnlocked = false;
-
-    const setupMediaSource = () => {
-      if (!useStreamingMode) return;
-
-      remoteAudio = new Audio();
-      mediaSource = new MediaSource();
-      remoteAudio.src = URL.createObjectURL(mediaSource);
-
-      mediaSource.addEventListener('sourceopen', () => {
-        const mime = 'audio/webm; codecs=opus';
-        if (MediaSource.isTypeSupported(mime)) {
-          sourceBuffer = mediaSource.addSourceBuffer(mime);
-          sourceBuffer.mode = 'sequence';
-          sourceBuffer.addEventListener('updateend', () => {
-            processQueue();
-          });
-        }
-      });
-
-      // Try to unlock audio - if blocked, show button
-      remoteAudio.play()
-        .then(() => {
-          console.log("✅ Audio unlocked automatically");
-          audioUnlocked = true;
-          remoteAudio.pause(); // Pause, we'll play when data arrives
-        })
-        .catch(e => {
-          console.log("🔒 Autoplay blocked - showing unlock button");
-          audioUnlocked = false;
-          const unlockBtn = document.getElementById('unlockAudioBtn');
-          console.log("Unlock button found:", !!unlockBtn);
-
-          if (unlockBtn) {
-            unlockBtn.style.display = 'block';
-            console.log("Button made visible, setting up click handler...");
-
-            // Create global unlock function for inline onclick
-            window.unlockAudio = function () {
-              console.log("🖱️  UNLOCK FUNCTION CALLED!");
-
-              // 1. Create silent audio to unlock main context
-              const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
-
-              // Try to unlock everything aggressively but safely
-              silentAudio.play().then(() => {
-                console.log("✅ Main audio context unlocked");
-                audioUnlocked = true;
-                unlockBtn.style.display = 'none';
-                pttStatus.innerText = "✅ Audio Enabled";
-                pttStatus.style.color = "#00fa9a";
-              }).catch(e => console.error("Main unlock failed", e));
-
-              // Attempt to unlock slider sounds independently
-              if (getReadyAudio) {
-                getReadyAudio.muted = true; // Mute to avoid noise during unlock
-                getReadyAudio.play().then(() => {
-                  getReadyAudio.pause();
-                  getReadyAudio.currentTime = 0;
-                  getReadyAudio.muted = false; // Unmute for later
-                  console.log("✅ getReadyAudio unlocked");
-                }).catch(e => console.log("getReady unlock fail", e));
-              }
-
-              if (notLiveAudio) {
-                notLiveAudio.muted = true;
-                notLiveAudio.play().then(() => {
-                  notLiveAudio.pause();
-                  notLiveAudio.currentTime = 0;
-                  notLiveAudio.muted = false;
-                  console.log("✅ notLiveAudio unlocked");
-                }).catch(e => console.log("notLive unlock fail", e));
-              }
-
-              // Also unlock MSE audio/Remote if it exists
-              if (remoteAudio) {
-                remoteAudio.play().then(() => remoteAudio.pause()).catch(() => { });
-              }
-            };
-
-            // Also use addEventListener as backup
-            unlockBtn.addEventListener('click', function () {
-              console.log("🖱️  addEventListener triggered!");
-              window.unlockAudio();
-            }, { once: true });
-
-            console.log("✅ Click handler set up successfully");
-            console.log("Global function window.unlockAudio created");
-          } else {
-            console.error("❌ Could not find unlock button element!");
-          }
-        });
-    };
-
-    if (useStreamingMode) {
-      setupMediaSource();
     }
 
-    // --- OFFLINE MODE (iOS / Fallback) ---
-    let completeAudioBlob = null;
-    let audioChunks = [];
+    toggleSwitch.checked = sliderState === "on";
 
-    // Debug logging
-    console.log("=== WALKIE TALKIE INIT ===");
-    console.log("iOS detected:", isIOS);
-    console.log("MediaSource supported:", supportsMediaSource);
-    console.log("Using streaming mode:", useStreamingMode);
-    console.log("My User ID:", myUserId);
+    if (sliderState === "on") {
+      document.body.classList.add('blinking');
+    } else {
+      document.body.classList.remove('blinking');
+    }
 
-    // 2. Play Audio Stream (Receiver) - DUAL MODE
-    console.log("Setting up walkieStreamRef listener...");
-    walkieStreamRef.on('child_added', (snapshot) => {
-      console.log("🔊 Firebase child_added triggered!");
-      const data = snapshot.val();
-      console.log("Received data:", { user: data.user, myUserId, audioSize: data.audio?.length, mimeType: data.mimeType });
-
-      if (data.user !== myUserId) {
-        console.log("✅ Audio from another user, attempting to play...");
-
-        // Check if this is a complete file (has mimeType) or a chunk (no mimeType)
-        const isCompleteFile = !!data.mimeType;
-
-        if (isCompleteFile) {
-          // COMPLETE FILE: Play as audio element (works everywhere)
-          console.log("💾 COMPLETE FILE MODE: Creating Audio element");
-
-          let rawMime = data.mimeType || 'audio/webm';
-          // Sanitize MIME type for iOS: remove codecs parameters if present
-          // Safari often prefers simple 'audio/webm' or 'audio/mp4'
-          const simpleMime = rawMime.split(';')[0];
-          console.log("Original MIME:", rawMime, "Sanitized MIME:", simpleMime);
-
-          const dataUrl = 'data:' + simpleMime + ';base64,' + data.audio;
-          console.log("Data URL created, length:", dataUrl.length);
-
-          const audio = new Audio(dataUrl);
-          audio.addEventListener('loadeddata', () => {
-            console.log("✅ Audio loaded successfully, duration:", audio.duration);
-            pttStatus.innerText = `Received ${simpleMime.split('/')[1]}`;
-            setTimeout(() => pttStatus.innerText = "Channel Ready", 2000);
-          });
-          audio.addEventListener('error', (e) => {
-            console.error("❌ Audio error:", e, audio.error);
-            pttStatus.innerText = "Error: Format not supported";
-            pttStatus.style.color = "red";
-          });
-
-          console.log("Attempting to play...");
-          audio.play()
-            .then(() => console.log("✅ Audio playing!"))
-            .catch(e => console.error("❌ Audio play error:", e));
-
-        } else if (useStreamingMode) {
-          // STREAMING CHUNKS: Append to MSE (legacy mode, not currently used)
-          console.log("📡 STREAMING MODE: Appending to MSE");
-          const arrayBuffer = base64ToArrayBuffer(data.audio);
-          bufferQueue.push(arrayBuffer);
-
-          // Only try to play if audio is unlocked
-          if (audioUnlocked && remoteAudio && remoteAudio.paused) {
-            console.log("▶️  Starting playback...");
-            remoteAudio.play().catch(e => console.log("Play failed:", e));
-          } else if (!audioUnlocked) {
-            console.log("🔒 Audio locked - user must click unlock button to hear audio");
-          }
-        }
-      } else {
-        console.log("⏭️  Skipping my own audio (echo prevention)");
-      }
-    });
-
-    console.log("Listener setup complete. Waiting for messages...");
-
-    // 3. Start Recording (Sender) - DUAL MODE
-    const requestTalk = () => {
-      walkieStatusRef.transaction((current) => {
-        if (current === null) {
-          return { user: myUserId, timestamp: Date.now() };
-        } else {
-          return;
-        }
-      });
-    };
-
-    // 4. Stop Recording (Release Mutex) - DUAL MODE
-    const stopTalk = () => {
-      if (audioRecorder && isRecording) {
-        audioRecorder.stop();
-        isRecording = false;
-      }
-      walkieStatusRef.set(null);
-      walkieStreamRef.remove();
-    };
-
-    // Initialize Audio Recorder - UNIVERSAL WAV MODE
-    const startRecording = async () => {
-      try {
-        console.log("🎙️ Starting WAV recording...");
-        audioRecorder = new AudioRecorder();
-
-        audioRecorder.onStop = (wavBlob) => {
-          console.log("🛑 Recording stopped. WAV Blob size:", wavBlob.size);
-          const reader = new FileReader();
-          reader.readAsDataURL(wavBlob);
-          reader.onloadend = () => {
-            const base64Audio = reader.result.split(',')[1];
-            console.log("📤 Sending WAV audio...");
-            walkieStreamRef.push({
-              user: myUserId,
-              audio: base64Audio,
-              mimeType: 'audio/wav', // Always WAV now
-              timestamp: Date.now()
-            });
-          };
-        };
-
-        await audioRecorder.start();
-        isRecording = true;
-
-      } catch (err) {
-        console.error("Mic error:", err);
-        alert("Microphone access required");
-        walkieStatusRef.set(null);
-      }
-    };
-
-
-    // Bind Events (Mouse & Touch for Mobile)
-    pttButton.addEventListener('mousedown', requestTalk);
-    window.addEventListener('mouseup', () => { if (isRecording) stopTalk(); isRecording = false; });
-
-    pttButton.addEventListener('touchstart', (e) => { e.preventDefault(); requestTalk(); });
-    window.addEventListener('touchend', () => { if (isRecording) stopTalk(); isRecording = false; });
-
-
-    // --- Existing App Logic ---
-
-    // Sync slider state with Firebase
-    sliderStateRef.on('value', (snapshot) => {
-      const sliderState = snapshot.val();
-
-      // Play audio on state change, but skip the first load to avoid autoplay issues/unwanted noise
-      if (!isFirstLoad) {
-        if (sliderState === "on") {
-          getReadyAudio.play().catch(e => console.log("Audio play failed (maybe autoplay policy?):", e));
-        } else {
-          notLiveAudio.play().catch(e => console.log("Audio play failed (maybe autoplay policy?):", e));
-        }
-      }
-
-      toggleSwitch.checked = sliderState === "on";
-
-      if (sliderState === "on") {
-        document.body.classList.add('blinking');
-      } else {
-        document.body.classList.remove('blinking');
-      }
-
-      isFirstLoad = false;
+    isFirstLoad = false;
     });
 
     // Update slider state in Firebase
