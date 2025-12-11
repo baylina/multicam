@@ -335,13 +335,54 @@
       }
     });
 
+    // --- Audio Queue (Gapless Playback Logic) ---
+    class AudioQueue {
+      constructor() {
+        this.queue = [];
+        this.isPlaying = false;
+      }
+
+      add(base64Audio) {
+        this.queue.push(base64Audio);
+        if (!this.isPlaying) {
+          this.playNext();
+        }
+      }
+
+      playNext() {
+        if (this.queue.length === 0) {
+          this.isPlaying = false;
+          return;
+        }
+
+        this.isPlaying = true;
+        const base64Audio = this.queue.shift();
+        const audio = new Audio(base64Audio);
+
+        audio.onended = () => {
+          this.playNext();
+        };
+
+        audio.onerror = (e) => {
+          console.error("Audio playback error", e);
+          this.playNext();
+        };
+
+        audio.play().catch(e => {
+          console.error("Autoplay prevented or error", e);
+          this.playNext();
+        });
+      }
+    }
+
+    const incomingAudioQueue = new AudioQueue();
+
     // 2. Play Audio Stream
     walkieStreamRef.on('child_added', (snapshot) => {
       const data = snapshot.val();
       // Only play if it's NOT my audio
       if (data.user !== myUserId) {
-        const audio = new Audio(data.audio);
-        audio.play().catch(e => console.error("Error playing stream:", e));
+        incomingAudioQueue.add(data.audio);
       }
     });
 
