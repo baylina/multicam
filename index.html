@@ -179,7 +179,7 @@
     <!-- Main Camera Toggle -->
     <div class="row">
       <div>
-        <div class="label">Joan's Camera 31</div>
+        <div class="label">Joan's Camera 32</div>
         <span class="status-indicator">Main Feed Control</span>
       </div>
       <label class="switch">
@@ -254,8 +254,9 @@
 
     // --- GLOBAL AUDIO INIT (Fixed Context & Receiver) ---
     // Persistent AudioContext to avoid sample-rate mismatches (slow audio)
+    // FORCE 44.1kHz to ensure consistency across Mac (48kHz) and iPhone (44.1kHz)
     const AudioContext = window.AudioContext || window.webkitAudioContext;
-    const audioCtx = new AudioContext();
+    const audioCtx = new AudioContext({ sampleRate: 44100 });
 
     // Persistent Receiver Audio Object (for iOS Autoplay policy)
     // We "bless" this object on the first user interaction (Unlock Button)
@@ -566,9 +567,16 @@
     });
 
     // --- Global Unlock Function for Button ---
-    // --- Global Unlock Function for Button ---
     window.unlockAudio = function () {
       console.log("🖱️  UNLOCK FUNCTION CALLED!");
+
+      // Immediate visual feedback
+      const btn = document.getElementById('unlockAudioBtn');
+      if (btn) {
+        btn.innerText = "⏳ UNLOCKING...";
+        btn.style.opacity = "0.6";
+        btn.disabled = true;
+      }
 
       // 1. Resume Global Audio Context (Fixes 'suspended' state & Rate Mismatch)
       if (audioCtx.state === 'suspended') {
@@ -580,8 +588,17 @@
       receiverAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
       receiverAudio.play().then(() => {
         console.log("✅ Receiver Audio 'Blessed' by user interaction");
-        document.getElementById('unlockAudioBtn').style.display = 'none';
-      }).catch(e => console.error("Unlock failed", e));
+        if (btn) {
+          btn.style.display = 'none';
+        }
+      }).catch(e => {
+        console.error("Unlock failed", e);
+        if (btn) {
+          btn.innerText = "❌ TAP AGAIN";
+          btn.style.opacity = "1";
+          btn.disabled = false;
+        }
+      });
 
       // 3. Unlock sound effects
       if (getReadyAudio) { getReadyAudio.muted = true; getReadyAudio.play().then(() => { getReadyAudio.pause(); getReadyAudio.currentTime = 0; getReadyAudio.muted = false; }); }
