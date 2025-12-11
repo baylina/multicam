@@ -179,7 +179,7 @@
     <!-- Main Camera Toggle -->
     <div class="row">
       <div>
-        <div class="label">Joan's Camera 33</div>
+        <div class="label">Joan's Camera 34</div>
         <span class="status-indicator">Main Feed Control</span>
       </div>
       <label class="switch">
@@ -384,17 +384,43 @@
           offset += chunk.length;
         }
 
-        const wavBlob = this.encodeWAV(buffer);
+        // RESAMPLE if needed (e.g., 48kHz -> 44.1kHz for iPhone)
+        const targetSampleRate = 44100;
+        let finalBuffer = buffer;
+
+        if (this.sampleRate !== targetSampleRate) {
+          console.log(`⚙️ Resampling ${this.sampleRate}Hz -> ${targetSampleRate}Hz`);
+          finalBuffer = this.resample(buffer, this.sampleRate, targetSampleRate);
+        }
+
+        const wavBlob = this.encodeWAV(finalBuffer, targetSampleRate);
         if (this.onStop) this.onStop(wavBlob);
       }
 
-      encodeWAV(samples) {
+      // Linear interpolation resampling
+      resample(buffer, fromRate, toRate) {
+        if (fromRate === toRate) return buffer;
+
+        const ratio = fromRate / toRate;
+        const newLength = Math.round(buffer.length / ratio);
+        const result = new Float32Array(newLength);
+
+        for (let i = 0; i < newLength; i++) {
+          const srcIndex = i * ratio;
+          const srcIndexFloor = Math.floor(srcIndex);
+          const srcIndexCeil = Math.min(srcIndexFloor + 1, buffer.length - 1);
+          const t = srcIndex - srcIndexFloor;
+
+          // Linear interpolation
+          result[i] = buffer[srcIndexFloor] * (1 - t) + buffer[srcIndexCeil] * t;
+        }
+
+        return result;
+      }
+
+      encodeWAV(samples, sampleRate = 44100) {
         const buffer = new ArrayBuffer(44 + samples.length * 2);
         const view = new DataView(buffer);
-
-        // ALWAYS write 44.1kHz to the WAV header for universal compatibility
-        // Even if the context runs at different rate, we force 44.1kHz output
-        const targetSampleRate = 44100;
 
         this.writeString(view, 0, 'RIFF');
         view.setUint32(4, 36 + samples.length * 2, true);
@@ -403,8 +429,8 @@
         view.setUint32(16, 16, true);
         view.setUint16(20, 1, true); // PCM
         view.setUint16(22, 1, true); // Mono
-        view.setUint32(24, targetSampleRate, true); // FORCE 44.1kHz
-        view.setUint32(28, targetSampleRate * 2, true); // Byte rate
+        view.setUint32(24, sampleRate, true); // Use provided sample rate
+        view.setUint32(28, sampleRate * 2, true); // Byte rate
         view.setUint16(32, 2, true); // Block align
         view.setUint16(34, 16, true); // Bits per sample
         this.writeString(view, 36, 'data');
@@ -437,6 +463,8 @@
     }
 
     // 2. Play Audio Stream (Receiver) - USES GLOBAL RECEIVER
+    let audioUnlockNeeded = false; // Track if we need unlock
+
     walkieStreamRef.on('child_added', (snapshot) => {
       const data = snapshot.val();
 
@@ -459,10 +487,17 @@
             setTimeout(() => pttStatus.innerText = "Channel Ready", 2000);
           })
           .catch(e => {
-            console.error("❌ Audio play error (Locked?):", e);
-            pttStatus.innerText = "TAP UNLOCK!";
-            const btn = document.getElementById('unlockAudioBtn');
-            if (btn) btn.style.display = 'block';
+            console.error("❌ Audio play error (Autoplay blocked):", e);
+            // Only NOW show the unlock button
+            if (!audioUnlockNeeded) {
+              audioUnlockNeeded = true;
+              const btn = document.getElementById('unlockAudioBtn');
+              if (btn) {
+                btn.style.display = 'block';
+                pttStatus.innerText = "TAP ORANGE BUTTON!";
+                pttStatus.style.color = "#ff9800";
+              }
+            }
           });
       }
     });
