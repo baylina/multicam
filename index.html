@@ -335,18 +335,25 @@
       }
     });
 
-    // --- MediaSource API (Streaming Logic) ---
+    // --- Detect iOS/Safari for compatibility ---
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const supportsMediaSource = 'MediaSource' in window && MediaSource.isTypeSupported('audio/webm; codecs=opus');
+    const useStreamingMode = !isIOS && supportsMediaSource;
 
-    // Queue to hold ArrayBuffers before appending
-    const bufferQueue = [];
+    if (isIOS) {
+      console.log("iOS detected: Using offline (complete file) mode for walkie talkie");
+      pttStatus.innerText = "iOS Mode (Offline)";
+    } else if (!supportsMediaSource) {
+      console.log("MediaSource not supported: Using offline mode");
+      pttStatus.innerText = "Offline Mode";
+    }
+
+    // --- STREAMING MODE (Desktop Chrome/Firefox) ---
+    let bufferQueue = [];
     let sourceBuffer = null;
-    let isAppending = false;
+    let remoteAudio = null;
+    let mediaSource = null;
 
-    // AUDIO CONTEXT (For playback)
-    const remoteAudio = new Audio();
-    const mediaSource = new MediaSource();
-
-    // Function to process the buffer queue
     const processQueue = () => {
       if (sourceBuffer && !sourceBuffer.updating && bufferQueue.length > 0) {
         const data = bufferQueue.shift();
@@ -358,7 +365,6 @@
       }
     };
 
-    // Helper: Convert Base64 to ArrayBuffer
     const base64ToArrayBuffer = (base64) => {
       const binary_string = window.atob(base64);
       const len = binary_string.length;
@@ -369,117 +375,144 @@
       return bytes.buffer;
     };
 
-    // Setup MediaSource when we expect stream
     const setupMediaSource = () => {
+      if (!useStreamingMode) return;
+
+      remoteAudio = new Audio();
+      mediaSource = new MediaSource();
       remoteAudio.src = URL.createObjectURL(mediaSource);
 
       mediaSource.addEventListener('sourceopen', () => {
-        // NOTE: Codec MUST match what MediaRecorder sends.
-        // Chrome/Firefox usually record in webm/opus.
         const mime = 'audio/webm; codecs=opus';
         if (MediaSource.isTypeSupported(mime)) {
           sourceBuffer = mediaSource.addSourceBuffer(mime);
-          sourceBuffer.mode = 'sequence'; // Timestamp is inferred from usage
-
+          sourceBuffer.mode = 'sequence';
           sourceBuffer.addEventListener('updateend', () => {
             processQueue();
           });
-        } else {
-          console.error("Codec not supported for MSE:", mime);
-          alert("Browser codec mismatch. Try Chrome or Firefox.");
         }
       });
 
-      // Try to unlock autoplay
-      remoteAudio.play().catch(e => console.log("Waiting for user interaction to play audio."));
+      remoteAudio.play().catch(e => console.log("Waiting for user interaction"));
     };
 
-    // Initialize MediaSource once
-    setupMediaSource();
+    if (useStreamingMode) {
+      setupMediaSource();
+    }
 
-    // 2. Play Audio Stream (Receiver)
+    // --- OFFLINE MODE (iOS / Fallback) ---
+    let completeAudioBlob = null;
+    let audioChunks = [];
+
+    // 2. Play Audio Stream (Receiver) - DUAL MODE
     walkieStreamRef.on('child_added', (snapshot) => {
       const data = snapshot.val();
 
-      // Do not play my own audio (echo cancellation)
       if (data.user !== myUserId) {
-        // Convert Base64 -> ArrayBuffer
-        const arrayBuffer = base64ToArrayBuffer(data.audio);
+        if (useStreamingMode) {
+          // STREAMING: Append chunks to MSE
+          const arrayBuffer = base64ToArrayBuffer(data.audio);
+          bufferQueue.push(arrayBuffer);
+          processQueue();
 
-        // Push to queue
-        bufferQueue.push(arrayBuffer);
-
-        // Try to process
-        processQueue();
-
-        // Ensure audio is playing if paused/stalled
-        if (remoteAudio.paused) {
-          remoteAudio.play().catch(e => console.log("Autoplay block"));
+          if (remoteAudio && remoteAudio.paused) {
+            remoteAudio.play().catch(e => console.log("Autoplay block"));
+          }
+        } else {
+          // OFFLINE: Play complete audio file (data URL format)
+          const audio = new Audio('data:audio/webm;base64,' + data.audio);
+          audio.play().catch(e => console.error("Audio play error:", e));
         }
       }
     });
 
-    // 3. Start Recording (Sender)
+    // 3. Start Recording (Sender) - DUAL MODE
     const requestTalk = () => {
-      // Try to claim the channel
       walkieStatusRef.transaction((current) => {
         if (current === null) {
           return { user: myUserId, timestamp: Date.now() };
         } else {
-          return; // Abort if busy
+          return;
         }
       });
     };
 
-    // 4. Stop Recording (Release Mutex)
+    // 4. Stop Recording (Release Mutex) - DUAL MODE
     const stopTalk = () => {
       if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.stop();
       }
-      walkieStatusRef.set(null); // Release lock
-      // Optional: clear stream to save space/bandwidth for new session
+      walkieStatusRef.set(null);
       walkieStreamRef.remove();
-
-      // We don't easily reset MSE without re-init, so clean slate approach
-      // In a robust app we'd re-create MediaSource here for next person.
     };
 
-    // Initialize Media Recorder
+    // Initialize Media Recorder - DUAL MODE
     const startRecording = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        // Use optimal codec for MSE
-        const options = { mimeType: 'audio/webm; codecs=opus' };
+
+        let options = {};
+        // Try webm/opus first (best quality)
+        if (MediaRecorder.isTypeSupported('audio/webm; codecs=opus')) {
+          options = { mimeType: 'audio/webm; codecs=opus' };
+        } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+          options = { mimeType: 'audio/mp4' }; // iOS fallback
+        }
+
         mediaRecorder = new MediaRecorder(stream, options);
         isRecording = true;
+        audioChunks = []; // Reset for offline mode
 
-        mediaRecorder.ondataavailable = (e) => {
-          if (e.data.size > 0) {
-            // Blob -> ArrayBuffer -> Base64
+        if (useStreamingMode) {
+          // STREAMING MODE: Send small chunks
+          mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) {
+              const reader = new FileReader();
+              reader.readAsDataURL(e.data);
+              reader.onloadend = () => {
+                const base64Audio = reader.result.split(',')[1];
+                walkieStreamRef.push({
+                  user: myUserId,
+                  audio: base64Audio,
+                  timestamp: Date.now()
+                });
+              };
+            }
+          };
+          mediaRecorder.start(100); // 100ms chunks for real-time
+        } else {
+          // OFFLINE MODE: Collect all chunks, send on stop
+          mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) {
+              audioChunks.push(e.data);
+            }
+          };
+
+          mediaRecorder.onstop = () => {
+            const completeBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
             const reader = new FileReader();
-            reader.readAsDataURL(e.data);
+            reader.readAsDataURL(completeBlob);
             reader.onloadend = () => {
-              // result is "data:audio/webm;base64,GkXfo..."
-              // We need just the Base64 part
               const base64Audio = reader.result.split(',')[1];
-
+              // Send complete audio as single entry
               walkieStreamRef.push({
                 user: myUserId,
                 audio: base64Audio,
                 timestamp: Date.now()
               });
             };
-          }
-        };
+            audioChunks = [];
+          };
 
-        // Send small chunks (100ms) for real-time feel
-        mediaRecorder.start(100);
+          mediaRecorder.start(); // Record continuously until stop
+        }
       } catch (err) {
-        console.error("Mic access/codec error:", err);
-        alert("Microphone or Codec issue. Required: audio/webm; codecs=opus");
+        console.error("Mic error:", err);
+        alert("Microphone access required");
         walkieStatusRef.set(null);
       }
     };
+
 
     // Bind Events (Mouse & Touch for Mobile)
     pttButton.addEventListener('mousedown', requestTalk);
