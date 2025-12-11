@@ -22,7 +22,7 @@
     <!-- Main Camera Toggle -->
     <div class="row">
       <div>
-        <div class="label">Joan's Camera 39</div>
+        <div class="label">Joan's Camera 40</div>
         <span class="status-indicator">Main Feed Control</span>
       </div>
       <label class="switch">
@@ -315,8 +315,8 @@
             if (audioCtx.state === 'suspended') {
               await audioCtx.resume();
             }
-            // Also try to "bless" receiver audio silently
-            receiverAudio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAAABkYXRhAAAAAA==';
+            // Also try to "bless" receiver audio silently with valid WAV (PCM 16bit 44.1kHz Mono)
+            receiverAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
             await receiverAudio.play();
             receiverAudio.pause();
             console.log("✅ Auto-unlocked audio on first PTT");
