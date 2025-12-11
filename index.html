@@ -4,29 +4,101 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Joan's Camera Toggle</title>
+  <title>Joan's Camera Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    body {
-      font-family: Verdana, sans-serif;
+    :root {
+      --bg-color: #121212;
+      --card-bg: #1e1e1e;
+      --text-main: #e0e0e0;
+      --text-muted: #a0a0a0;
+      --accent-green: #00fa9a;
+      /* SpringGreen type for visibility */
+      --accent-blue: #2979ff;
+      --danger-red: #ff3d00;
+      --transition-speed: 0.3s;
     }
 
-    .container {
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-top: 20px;
+      min-height: 100vh;
+      overflow: hidden;
+      /* Prevent scrollbars during animations */
+      transition: background-color var(--transition-speed) ease;
+    }
+
+    /* Tally Light States (Applied to Body Background) */
+    body.blinking {
+      animation: blink-bg 0.5s ease-in-out infinite alternate;
+    }
+
+    body.warning {
+      background-color: #b00020;
+      /* Darker red for warning static */
+    }
+
+    @keyframes blink-bg {
+      0% {
+        background-color: #b00020;
+      }
+
+      100% {
+        background-color: #000000;
+      }
+    }
+
+    /* Main Control Deck */
+    .control-deck {
+      background-color: var(--card-bg);
+      padding: 2rem;
+      border-radius: 24px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      position: relative;
+      z-index: 10;
+      /* Keep above flashing background */
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
 
     .label {
-      font-size: 24px;
-      margin-right: 20px;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text-main);
     }
 
+    .status-indicator {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 400;
+      margin-top: 4px;
+      display: block;
+    }
+
+    /* Huge Switch */
     .switch {
       position: relative;
       display: inline-block;
-      width: 160px;
-      height: 68px;
+      width: 80px;
+      height: 44px;
     }
 
     .switch input {
@@ -42,67 +114,75 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background-color: #ccc;
-      transition: 0.4s;
-      border-radius: 68px;
+      background-color: #3a3a3a;
+      transition: .4s;
+      border-radius: 44px;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
     }
 
     .slider:before {
       position: absolute;
       content: "";
-      height: 60px;
-      width: 60px;
+      height: 36px;
+      width: 36px;
       left: 4px;
       bottom: 4px;
-      background-color: white;
-      transition: 0.4s;
+      background-color: #b0b0b0;
+      transition: .4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      /* Bouncy effect */
       border-radius: 50%;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     }
 
     input:checked+.slider {
-      background-color: #28a745;
+      background-color: rgba(0, 250, 154, 0.2);
+      /* Green glowish bg */
+      border: 1px solid var(--accent-green);
     }
 
     input:checked+.slider:before {
-      transform: translateX(96px);
+      transform: translateX(36px);
+      background-color: var(--accent-green);
+      box-shadow: 0 0 10px var(--accent-green);
     }
 
-    .slider.round {
-      border-radius: 68px;
+    /* Warning Switch specific style */
+    .switch-warning input:checked+.slider {
+      background-color: rgba(255, 61, 0, 0.2);
+      border: 1px solid var(--danger-red);
     }
 
-    .slider.round:before {
-      border-radius: 50%;
+    .switch-warning input:checked+.slider:before {
+      background-color: var(--danger-red);
+      box-shadow: 0 0 10px var(--danger-red);
     }
 
+
+    /* Look At Me Button */
     #lookAtMeButton {
-      margin-top: 20px;
-      padding: 10px 20px;
-      font-size: 20px;
+      width: 100%;
+      padding: 1.2rem;
+      font-size: 1.2rem;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
       cursor: pointer;
-      background-color: #007BFF;
+      background: linear-gradient(135deg, #2979ff, #1565c0);
       color: white;
       border: none;
-      border-radius: 5px;
-      font-family: Verdana, sans-serif;
+      border-radius: 16px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      transition: transform 0.1s, box-shadow 0.1s;
     }
 
-    body.blinking {
-      animation: blink 0.5s alternate infinite;
+    #lookAtMeButton:active {
+      transform: scale(0.97);
+      box-shadow: 0 2px 3px rgba(0, 0, 0, 0.2);
     }
 
-    body.warning {
-      background-color: red;
-    }
-
-    @keyframes blink {
-      0% {
-        background-color: red;
-      }
-
-      100% {
-        background-color: black;
-      }
+    .divider {
+      height: 1px;
+      background-color: rgba(255, 255, 255, 0.05);
+      margin: 0.5rem 0;
     }
   </style>
 
@@ -113,28 +193,50 @@
 
 <body>
 
-  <!-- Existing toggle and Look at me button -->
-  <div class="container">
-    <span class="label">Joan's Camera 3</span>
-    <label class="switch">
-      <input type="checkbox" id="toggleSwitch">
-      <span class="slider round"></span>
-    </label>
-  </div>
+  <div class="control-deck">
 
-  <div class="container">
-    <button id="lookAtMeButton">Look at me</button>
-  </div>
+    <!-- Main Camera Toggle -->
+    <div class="row">
+      <div>
+        <div class="label">Joan's Camera</div>
+        <span class="status-indicator">Main Feed Control</span>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="toggleSwitch">
+        <span class="slider"></span>
+      </label>
+    </div>
 
-  <!-- New Warning toggle -->
-  <div class="container">
-    <span class="label">Warning</span>
-    <label class="switch">
-      <input type="checkbox" id="warningToggle">
-      <span class="slider round"></span>
-    </label>
-  </div>
+    <div class="divider"></div>
 
+    <!-- Look At Me Button -->
+    <div class="row">
+      <button id="lookAtMeButton">👀 Look at me</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Warning Toggle -->
+    <div class="row">
+      <div>
+        <div class="label">Warning Mode</div>
+        <span class="status-indicator">Emergency Tally</span>
+      </div>
+      <label class="switch switch-warning">
+        <input type="checkbox" id="warningToggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Walkie Talkie PTT -->
+    <div class="row" style="justify-content: center; flex-direction: column; gap: 10px;">
+      <button id="pttButton">🎙️ Hold to Talk</button>
+      <span id="pttStatus" class="status-indicator" style="text-align: center;">Channel Ready</span>
+    </div>
+
+  </div>
   <script>
     // Firebase configuration
     const firebaseConfig = {
@@ -154,14 +256,157 @@
     const toggleSwitch = document.getElementById('toggleSwitch');
     const lookAtMeButton = document.getElementById('lookAtMeButton');
     const warningToggle = document.getElementById('warningToggle');
+    const pttButton = document.getElementById('pttButton');
+    const pttStatus = document.getElementById('pttStatus');
 
     const sliderStateRef = database.ref('sliderState');
     const blinkStateRef = database.ref('blinkState');
     const warningStateRef = database.ref('warningState');
+    const walkieStatusRef = database.ref('walkieTalkie/status');
+    const walkieStreamRef = database.ref('walkieTalkie/stream');
 
     const getReadyAudio = new Audio('getReady.mp3');
     const notLiveAudio = new Audio('notLive.mp3');
     let isFirstLoad = true;
+
+    // --- Walkie Talkie Logic ---
+    const myUserId = 'user_' + Math.random().toString(36).substr(2, 9);
+    let mediaRecorder = null;
+    let isRecording = false;
+
+    // UI Styles for PTT
+    const updatePttUI = (state, who) => {
+      pttButton.style.transition = 'all 0.2s';
+      if (state === 'idle') {
+        pttButton.disabled = false;
+        pttButton.innerText = "🎙️ Hold to Talk";
+        pttButton.style.background = "#333";
+        pttButton.style.color = "#fff";
+        pttButton.style.opacity = "1";
+        pttStatus.innerText = "Channel Ready";
+        pttStatus.style.color = "#a0a0a0";
+      } else if (state === 'talking') {
+        pttButton.disabled = false;
+        pttButton.innerText = "Transmitting...";
+        pttButton.style.background = "#ff3d00"; // Red
+        pttButton.style.color = "white";
+        pttStatus.innerText = "You are live";
+        pttStatus.style.color = "#ff3d00";
+      } else if (state === 'busy') {
+        pttButton.disabled = true;
+        pttButton.innerText = "Channel Busy";
+        pttButton.style.background = "#1a1a1a";
+        pttButton.style.opacity = "0.5";
+        pttStatus.innerText = `${who || 'Someone'} is talking...`;
+        pttStatus.style.color = "#00fa9a"; // Green text for listening
+      }
+    };
+
+    // Setup CSS for PTT Button dynamically
+    pttButton.style.cssText = `
+        width: 100%;
+        padding: 1.5rem;
+        font-size: 1.3rem;
+        font-weight: 700;
+        font-family: 'Inter', sans-serif;
+        cursor: pointer;
+        background: #333;
+        color: white;
+        border: 2px solid rgba(255,255,255,0.1);
+        border-radius: 16px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: manipulation;
+    `;
+
+    // 1. Listen to Channel Status (Mutex)
+    walkieStatusRef.on('value', (snapshot) => {
+      const status = snapshot.val();
+      if (!status) {
+        updatePttUI('idle');
+      } else if (status.user === myUserId) {
+        // I obtained the lock!
+        if (!isRecording) startRecording(); // Start mic if not already
+        updatePttUI('talking');
+      } else {
+        // Someone else has the lock
+        updatePttUI('busy', "Someone");
+      }
+    });
+
+    // 2. Play Audio Stream
+    walkieStreamRef.on('child_added', (snapshot) => {
+      const data = snapshot.val();
+      // Only play if it's NOT my audio
+      if (data.user !== myUserId) {
+        const audio = new Audio(data.audio);
+        audio.play().catch(e => console.error("Error playing stream:", e));
+      }
+    });
+
+    // 3. Start Recording (Request Mutex)
+    const requestTalk = () => {
+      // Try to claim the channel
+      walkieStatusRef.transaction((current) => {
+        if (current === null) {
+          return { user: myUserId, timestamp: Date.now() };
+        } else {
+          return; // Abort if busy
+        }
+      });
+    };
+
+    // 4. Stop Recording (Release Mutex)
+    const stopTalk = () => {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+      walkieStatusRef.set(null); // Release lock
+      // Optional: clear stream to save space/bandwidth for new session
+      walkieStreamRef.remove();
+    };
+
+    // Initialize Media Recorder
+    const startRecording = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        isRecording = true;
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            const reader = new FileReader();
+            reader.readAsDataURL(e.data);
+            reader.onloadend = () => {
+              const base64Audio = reader.result;
+              // Push chunk to Firebase
+              walkieStreamRef.push({
+                user: myUserId,
+                audio: base64Audio,
+                timestamp: Date.now()
+              });
+            };
+          }
+        };
+
+        mediaRecorder.start(250); // Slice every 250ms for low latency
+      } catch (err) {
+        console.error("Mic access denied:", err);
+        alert("Microphone access is required for Walkie Talkie.");
+        walkieStatusRef.set(null); // Release lock if we can't record
+      }
+    };
+
+    // Bind Events (Mouse & Touch for Mobile)
+    pttButton.addEventListener('mousedown', requestTalk);
+    window.addEventListener('mouseup', () => { if (isRecording) stopTalk(); isRecording = false; });
+
+    pttButton.addEventListener('touchstart', (e) => { e.preventDefault(); requestTalk(); });
+    window.addEventListener('touchend', () => { if (isRecording) stopTalk(); isRecording = false; });
+
+
+    // --- Existing App Logic ---
 
     // Sync slider state with Firebase
     sliderStateRef.on('value', (snapshot) => {

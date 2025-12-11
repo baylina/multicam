@@ -10,6 +10,9 @@
     },
     "warningState": {
       ".write": "newData.isString() && (newData.val() === 'on' || newData.val() === 'off')"
+    },
+    "walkieTalkie": {
+      ".write": true
     }
   }
 }
