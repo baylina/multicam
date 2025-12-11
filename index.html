@@ -198,7 +198,7 @@
     <!-- Main Camera Toggle -->
     <div class="row">
       <div>
-        <div class="label">Joan's Camera 12</div>
+        <div class="label">Joan's Camera 13</div>
         <span class="status-indicator">Main Feed Control</span>
       </div>
       <label class="switch">
@@ -545,7 +545,7 @@
       walkieStreamRef.remove();
     };
 
-    // Initialize Media Recorder - DUAL MODE
+    // Initialize Media Recorder - ALWAYS OFFLINE SENDING FOR COMPATIBILITY
     const startRecording = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -565,55 +565,38 @@
         }
 
         console.log("Starting recording with MIME:", selectedMimeType);
+        console.log("🎙️  SENDING MODE: Offline (complete file) for universal compatibility");
+
         mediaRecorder = new MediaRecorder(stream, options);
         isRecording = true;
-        audioChunks = []; // Reset for offline mode
+        audioChunks = []; // Reset
 
-        if (useStreamingMode) {
-          // STREAMING MODE: Send small chunks
-          mediaRecorder.ondataavailable = (e) => {
-            if (e.data.size > 0) {
-              const reader = new FileReader();
-              reader.readAsDataURL(e.data);
-              reader.onloadend = () => {
-                const base64Audio = reader.result.split(',')[1];
-                walkieStreamRef.push({
-                  user: myUserId,
-                  audio: base64Audio,
-                  timestamp: Date.now()
-                });
-              };
-            }
-          };
-          mediaRecorder.start(100); // 100ms chunks for real-time
-        } else {
-          // OFFLINE MODE: Collect all chunks, send on stop
-          mediaRecorder.ondataavailable = (e) => {
-            if (e.data.size > 0) {
-              audioChunks.push(e.data);
-            }
-          };
+        // ALWAYS USE OFFLINE MODE FOR SENDING (iPhone compatibility)
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            audioChunks.push(e.data);
+          }
+        };
 
-          mediaRecorder.onstop = () => {
-            const completeBlob = new Blob(audioChunks, { type: selectedMimeType });
-            const reader = new FileReader();
-            reader.readAsDataURL(completeBlob);
-            reader.onloadend = () => {
-              const base64Audio = reader.result.split(',')[1];
-              console.log("Sending offline audio, MIME:", selectedMimeType, "Size:", base64Audio.length);
-              // Send complete audio as single entry WITH mimeType
-              walkieStreamRef.push({
-                user: myUserId,
-                audio: base64Audio,
-                mimeType: selectedMimeType,
-                timestamp: Date.now()
-              });
-            };
-            audioChunks = [];
+        mediaRecorder.onstop = () => {
+          const completeBlob = new Blob(audioChunks, { type: selectedMimeType });
+          const reader = new FileReader();
+          reader.readAsDataURL(completeBlob);
+          reader.onloadend = () => {
+            const base64Audio = reader.result.split(',')[1];
+            console.log("📤 Sending complete audio file, MIME:", selectedMimeType, "Size:", base64Audio.length);
+            // Send complete audio as single entry WITH mimeType
+            walkieStreamRef.push({
+              user: myUserId,
+              audio: base64Audio,
+              mimeType: selectedMimeType,
+              timestamp: Date.now()
+            });
           };
+          audioChunks = [];
+        };
 
-          mediaRecorder.start(); // Record continuously until stop
-        }
+        mediaRecorder.start(); // Record continuously until stop
       } catch (err) {
         console.error("Mic error:", err);
         alert("Microphone access required");
