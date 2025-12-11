@@ -184,6 +184,20 @@
       background-color: rgba(255, 255, 255, 0.05);
       margin: 0.5rem 0;
     }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+
+      50% {
+        transform: scale(1.02);
+        opacity: 0.9;
+      }
+    }
   </style>
 
   <!-- Firebase Configuration -->
@@ -198,7 +212,7 @@
     <!-- Main Camera Toggle -->
     <div class="row">
       <div>
-        <div class="label">Joan's Camera 14</div>
+        <div class="label">Joan's Camera 15</div>
         <span class="status-indicator">Main Feed Control</span>
       </div>
       <label class="switch">
@@ -236,24 +250,27 @@
       <span id="pttStatus" class="status-indicator" style="text-align: center;">Channel Ready</span>
 
       <!-- Audio unlock button -->
-      <button id="unlockAudioBtn" style="
+      <button id="unlockAudioBtn" onclick="window.unlockAudio && window.unlockAudio()" style="
         display: none; 
         width: 100%;
-        padding: 1.2rem;
-        font-size: 1.1rem;
-        font-weight: 600;
-        background: #ff9800; 
+        padding: 1.5rem 2rem;
+        font-size: 1.3rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #ff9800, #f57c00); 
         color: white;
-        border: none;
-        border-radius: 12px;
+        border: 3px solid #ff5722;
+        border-radius: 16px;
         cursor: pointer;
-        margin-top: 10px;
-        box-shadow: 0 4px 8px rgba(255,152,0,0.4);
+        margin-top: 15px;
+        box-shadow: 0 6px 12px rgba(255,87,34,0.6);
         font-family: 'Inter', sans-serif;
         z-index: 1000;
         pointer-events: auto;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        animation: pulse 2s infinite;
       ">
-        🔊 Click to Enable Audio Reception
+        🔊 CLICK AQUÍ PARA ACTIVAR AUDIO 🔊
       </button>
     </div>
 
