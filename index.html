@@ -22,7 +22,7 @@
     <!-- Main Camera Toggle -->
     <div class="row">
       <div>
-        <div class="label">Joan's Camera 37</div>
+        <div class="label">Joan's Camera 38</div>
         <span class="status-indicator">Main Feed Control</span>
       </div>
       <label class="switch">
@@ -71,11 +71,16 @@
     // --- Walkie Talkie Logic ---
     const myUserId = 'user_' + Math.random().toString(36).substr(2, 9);
 
+    // --- Detect iOS/Safari for compatibility ---
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
     // --- GLOBAL AUDIO INIT (Fixed Context & Receiver) ---
     // Persistent AudioContext to avoid sample-rate mismatches
-    // We allow native sample rate (e.g. 48kHz on iPhone) and allow software resampling to fix it
+    // On Mac/PC: FORCE 44.1kHz (native support) to avoid JS resampling artifacts
+    // On iOS: Use default (48kHz) and resample via JS (Safari doesn't support forcing rate)
     const AudioContext = window.AudioContext || window.webkitAudioContext;
-    const audioCtx = new AudioContext();
+    const ctxOptions = isIOS ? {} : { sampleRate: 44100 };
+    const audioCtx = new AudioContext(ctxOptions);
 
     // Persistent Receiver Audio Object (for iOS Autoplay policy)
     // We "bless" this object on the first user interaction (Unlock Button)
@@ -258,7 +263,6 @@
     }
 
     // --- Detect iOS/Safari for compatibility ---
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
     if (isIOS) {
       pttStatus.innerText = "iOS Mode (Offline)";
@@ -424,8 +428,10 @@
     // --- Slider Logic ---
 
     // Sync slider state with Firebase
+    // Sync slider state with Firebase
     sliderStateRef.on('value', (snapshot) => {
       const sliderState = snapshot.val();
+      console.log("🔄 Slider synced from DB:", sliderState);
 
       // Play audio on state change, but skip the first load to avoid autoplay issues/unwanted noise
       if (!isFirstLoad) {
@@ -450,6 +456,7 @@
     // Update slider state in Firebase
     toggleSwitch.addEventListener('change', function () {
       const newState = this.checked ? "on" : "off";
+      console.log("🎚️ Slider changed manually to:", newState);
       sliderStateRef.set(newState);
     });
   </script>
