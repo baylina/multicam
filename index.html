@@ -198,7 +198,7 @@
     <!-- Main Camera Toggle -->
     <div class="row">
       <div>
-        <div class="label">Joan's Camera 11</div>
+        <div class="label">Joan's Camera 12</div>
         <span class="status-indicator">Main Feed Control</span>
       </div>
       <label class="switch">
@@ -236,7 +236,23 @@
       <span id="pttStatus" class="status-indicator" style="text-align: center;">Channel Ready</span>
 
       <!-- Audio unlock button -->
-      <button id="unlockAudioBtn" style="display: none; background: #ff9800; margin-top: 10px;">
+      <button id="unlockAudioBtn" style="
+        display: none; 
+        width: 100%;
+        padding: 1.2rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        background: #ff9800; 
+        color: white;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        margin-top: 10px;
+        box-shadow: 0 4px 8px rgba(255,152,0,0.4);
+        font-family: 'Inter', sans-serif;
+        z-index: 1000;
+        pointer-events: auto;
+      ">
         🔊 Click to Enable Audio Reception
       </button>
     </div>
@@ -411,20 +427,35 @@
           console.log("🔒 Autoplay blocked - showing unlock button");
           audioUnlocked = false;
           const unlockBtn = document.getElementById('unlockAudioBtn');
+          console.log("Unlock button found:", !!unlockBtn);
+
           if (unlockBtn) {
             unlockBtn.style.display = 'block';
-            unlockBtn.onclick = () => {
-              console.log("User clicked unlock button");
+            console.log("Button made visible, setting up click handler...");
+
+            // Use addEventListener for better compatibility
+            unlockBtn.addEventListener('click', function () {
+              console.log("🖱️  User clicked unlock button!");
+              console.log("Attempting to play remoteAudio...");
+
               remoteAudio.play()
                 .then(() => {
-                  console.log("✅ Audio unlocked!");
+                  console.log("✅ Audio unlocked successfully!");
                   audioUnlocked = true;
                   remoteAudio.pause();
                   unlockBtn.style.display = 'none';
                   pttStatus.innerText = "Audio Enabled - Ready";
+                  pttStatus.style.color = "#00fa9a";
                 })
-                .catch(err => console.error("Failed to unlock:", err));
-            };
+                .catch(err => {
+                  console.error("❌ Failed to unlock audio:", err);
+                  alert("Failed to enable audio. Please try clicking again.");
+                });
+            }, { once: true }); // Use once: true to prevent multiple listeners
+
+            console.log("✅ Click handler set up successfully");
+          } else {
+            console.error("❌ Could not find unlock button element!");
           }
         });
     };
