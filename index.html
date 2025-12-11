@@ -198,7 +198,7 @@
     <!-- Main Camera Toggle -->
     <div class="row">
       <div>
-        <div class="label">Joan's Camera 7</div>
+        <div class="label">Joan's Camera 8</div>
         <span class="status-indicator">Main Feed Control</span>
       </div>
       <label class="switch">
@@ -420,7 +420,9 @@
           }
         } else {
           // OFFLINE: Play complete audio file (data URL format)
-          const audio = new Audio('data:audio/webm;base64,' + data.audio);
+          const mimeType = data.mimeType || 'audio/webm'; // Fallback to webm
+          const audio = new Audio('data:' + mimeType + ';base64,' + data.audio);
+          console.log("Playing offline audio, MIME:", mimeType, "Size:", data.audio.length);
           audio.play().catch(e => console.error("Audio play error:", e));
         }
       }
@@ -452,13 +454,20 @@
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
         let options = {};
+        let selectedMimeType = '';
         // Try webm/opus first (best quality)
         if (MediaRecorder.isTypeSupported('audio/webm; codecs=opus')) {
           options = { mimeType: 'audio/webm; codecs=opus' };
+          selectedMimeType = 'audio/webm';
+        } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+          options = { mimeType: 'audio/webm' };
+          selectedMimeType = 'audio/webm';
         } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
           options = { mimeType: 'audio/mp4' }; // iOS fallback
+          selectedMimeType = 'audio/mp4';
         }
 
+        console.log("Starting recording with MIME:", selectedMimeType);
         mediaRecorder = new MediaRecorder(stream, options);
         isRecording = true;
         audioChunks = []; // Reset for offline mode
@@ -489,15 +498,17 @@
           };
 
           mediaRecorder.onstop = () => {
-            const completeBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
+            const completeBlob = new Blob(audioChunks, { type: selectedMimeType });
             const reader = new FileReader();
             reader.readAsDataURL(completeBlob);
             reader.onloadend = () => {
               const base64Audio = reader.result.split(',')[1];
-              // Send complete audio as single entry
+              console.log("Sending offline audio, MIME:", selectedMimeType, "Size:", base64Audio.length);
+              // Send complete audio as single entry WITH mimeType
               walkieStreamRef.push({
                 user: myUserId,
                 audio: base64Audio,
+                mimeType: selectedMimeType,
                 timestamp: Date.now()
               });
             };
