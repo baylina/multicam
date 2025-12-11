@@ -198,7 +198,7 @@
     <!-- Main Camera Toggle -->
     <div class="row">
       <div>
-        <div class="label">Joan's Camera 10</div>
+        <div class="label">Joan's Camera 11</div>
         <span class="status-indicator">Main Feed Control</span>
       </div>
       <label class="switch">
@@ -380,6 +380,8 @@
       return bytes.buffer;
     };
 
+    let audioUnlocked = false;
+
     const setupMediaSource = () => {
       if (!useStreamingMode) return;
 
@@ -398,7 +400,33 @@
         }
       });
 
-      remoteAudio.play().catch(e => console.log("Waiting for user interaction"));
+      // Try to unlock audio - if blocked, show button
+      remoteAudio.play()
+        .then(() => {
+          console.log("✅ Audio unlocked automatically");
+          audioUnlocked = true;
+          remoteAudio.pause(); // Pause, we'll play when data arrives
+        })
+        .catch(e => {
+          console.log("🔒 Autoplay blocked - showing unlock button");
+          audioUnlocked = false;
+          const unlockBtn = document.getElementById('unlockAudioBtn');
+          if (unlockBtn) {
+            unlockBtn.style.display = 'block';
+            unlockBtn.onclick = () => {
+              console.log("User clicked unlock button");
+              remoteAudio.play()
+                .then(() => {
+                  console.log("✅ Audio unlocked!");
+                  audioUnlocked = true;
+                  remoteAudio.pause();
+                  unlockBtn.style.display = 'none';
+                  pttStatus.innerText = "Audio Enabled - Ready";
+                })
+                .catch(err => console.error("Failed to unlock:", err));
+            };
+          }
+        });
     };
 
     if (useStreamingMode) {
@@ -432,8 +460,12 @@
           bufferQueue.push(arrayBuffer);
           processQueue();
 
-          if (remoteAudio && remoteAudio.paused) {
-            remoteAudio.play().catch(e => console.log("Autoplay block:", e));
+          // Only try to play if audio is unlocked
+          if (audioUnlocked && remoteAudio && remoteAudio.paused) {
+            console.log("▶️  Starting playback...");
+            remoteAudio.play().catch(e => console.log("Play failed:", e));
+          } else if (!audioUnlocked) {
+            console.log("🔒 Audio locked - user must click unlock button to hear audio");
           }
         } else {
           // OFFLINE: Play complete audio file (data URL format)
