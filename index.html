@@ -212,7 +212,7 @@
     <!-- Main Camera Toggle -->
     <div class="row">
       <div>
-        <div class="label">Joan's Camera 22</div>
+        <div class="label">Joan's Camera 23</div>
         <span class="status-indicator">Main Feed Control</span>
       </div>
       <label class="switch">
@@ -453,36 +453,44 @@
             // Create global unlock function for inline onclick
             window.unlockAudio = function () {
               console.log("🖱️  UNLOCK FUNCTION CALLED!");
-              console.log("Attempting to unlock all audio contexts...");
 
               // 1. Create silent audio to unlock main context
               const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
 
-              // 2. Play all audios to authorise them
-              // We use Promise.all to ensure all are attempted
-              const p1 = silentAudio.play();
+              // Try to unlock everything aggressively but safely
+              silentAudio.play().then(() => {
+                console.log("✅ Main audio context unlocked");
+                audioUnlocked = true;
+                unlockBtn.style.display = 'none';
+                pttStatus.innerText = "✅ Audio Enabled";
+                pttStatus.style.color = "#00fa9a";
+              }).catch(e => console.error("Main unlock failed", e));
 
-              // Try to unlock the slider sounds too
-              const p2 = getReadyAudio.play().then(() => getReadyAudio.pause()).catch(e => console.log("getReady unlock fail", e));
-              const p3 = notLiveAudio.play().then(() => notLiveAudio.pause()).catch(e => console.log("notLive unlock fail", e));
+              // Attempt to unlock slider sounds independently
+              if (getReadyAudio) {
+                getReadyAudio.muted = true; // Mute to avoid noise during unlock
+                getReadyAudio.play().then(() => {
+                  getReadyAudio.pause();
+                  getReadyAudio.currentTime = 0;
+                  getReadyAudio.muted = false; // Unmute for later
+                  console.log("✅ getReadyAudio unlocked");
+                }).catch(e => console.log("getReady unlock fail", e));
+              }
 
-              Promise.all([p1, p2, p3])
-                .then(() => {
-                  console.log("✅ All audio contexts unlocked successfully!");
-                  audioUnlocked = true;
-                  unlockBtn.style.display = 'none';
-                  pttStatus.innerText = "✅ Audio Enabled";
-                  pttStatus.style.color = "#00fa9a";
+              if (notLiveAudio) {
+                notLiveAudio.muted = true;
+                notLiveAudio.play().then(() => {
+                  notLiveAudio.pause();
+                  notLiveAudio.currentTime = 0;
+                  notLiveAudio.muted = false;
+                  console.log("✅ notLiveAudio unlocked");
+                }).catch(e => console.log("notLive unlock fail", e));
+              }
 
-                  // Also unlock MSE audio if it exists
-                  if (remoteAudio) {
-                    remoteAudio.play().then(() => remoteAudio.pause()).catch(() => { });
-                  }
-                })
-                .catch(err => {
-                  console.error("❌ Still failed to unlock:", err);
-                  alert("Por favor, haz clic en el botón de nuevo");
-                });
+              // Also unlock MSE audio/Remote if it exists
+              if (remoteAudio) {
+                remoteAudio.play().then(() => remoteAudio.pause()).catch(() => { });
+              }
             };
 
             // Also use addEventListener as backup
