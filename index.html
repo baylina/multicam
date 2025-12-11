@@ -212,7 +212,7 @@
     <!-- Main Camera Toggle -->
     <div class="row">
       <div>
-        <div class="label">Joan's Camera 21</div>
+        <div class="label">Joan's Camera 22</div>
         <span class="status-indicator">Main Feed Control</span>
       </div>
       <label class="switch">
@@ -530,16 +530,26 @@
         if (isCompleteFile) {
           // COMPLETE FILE: Play as audio element (works everywhere)
           console.log("💾 COMPLETE FILE MODE: Creating Audio element");
-          const mimeType = data.mimeType || 'audio/webm';
-          const dataUrl = 'data:' + mimeType + ';base64,' + data.audio;
-          console.log("Data URL created, length:", dataUrl.length, "MIME:", mimeType);
+
+          let rawMime = data.mimeType || 'audio/webm';
+          // Sanitize MIME type for iOS: remove codecs parameters if present
+          // Safari often prefers simple 'audio/webm' or 'audio/mp4'
+          const simpleMime = rawMime.split(';')[0];
+          console.log("Original MIME:", rawMime, "Sanitized MIME:", simpleMime);
+
+          const dataUrl = 'data:' + simpleMime + ';base64,' + data.audio;
+          console.log("Data URL created, length:", dataUrl.length);
 
           const audio = new Audio(dataUrl);
           audio.addEventListener('loadeddata', () => {
             console.log("✅ Audio loaded successfully, duration:", audio.duration);
+            pttStatus.innerText = `Received ${simpleMime.split('/')[1]}`;
+            setTimeout(() => pttStatus.innerText = "Channel Ready", 2000);
           });
           audio.addEventListener('error', (e) => {
             console.error("❌ Audio error:", e, audio.error);
+            pttStatus.innerText = "Error: Format not supported";
+            pttStatus.style.color = "red";
           });
 
           console.log("Attempting to play...");
@@ -552,7 +562,6 @@
           console.log("📡 STREAMING MODE: Appending to MSE");
           const arrayBuffer = base64ToArrayBuffer(data.audio);
           bufferQueue.push(arrayBuffer);
-          processQueue();
 
           // Only try to play if audio is unlocked
           if (audioUnlocked && remoteAudio && remoteAudio.paused) {
