@@ -212,7 +212,7 @@
     <!-- Main Camera Toggle -->
     <div class="row">
       <div>
-        <div class="label">Joan's Camera 16</div>
+        <div class="label">Joan's Camera 17</div>
         <span class="status-indicator">Main Feed Control</span>
       </div>
       <label class="switch">
@@ -453,13 +453,22 @@
             // Create global unlock function for inline onclick
             window.unlockAudio = function () {
               console.log("🖱️  UNLOCK FUNCTION CALLED!");
-              console.log("Attempting to create and play a test audio...");
+              console.log("Attempting to unlock all audio contexts...");
 
-              // Create a silent audio to unlock the context
+              // 1. Create silent audio to unlock main context
               const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
-              silentAudio.play()
+
+              // 2. Play all audios to authorise them
+              // We use Promise.all to ensure all are attempted
+              const p1 = silentAudio.play();
+
+              // Try to unlock the slider sounds too
+              const p2 = getReadyAudio.play().then(() => getReadyAudio.pause()).catch(e => console.log("getReady unlock fail", e));
+              const p3 = notLiveAudio.play().then(() => notLiveAudio.pause()).catch(e => console.log("notLive unlock fail", e));
+
+              Promise.all([p1, p2, p3])
                 .then(() => {
-                  console.log("✅ Audio context unlocked successfully!");
+                  console.log("✅ All audio contexts unlocked successfully!");
                   audioUnlocked = true;
                   unlockBtn.style.display = 'none';
                   pttStatus.innerText = "✅ Audio Enabled";
