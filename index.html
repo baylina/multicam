@@ -22,7 +22,7 @@
     <!-- Main Camera Toggle -->
     <div class="row">
       <div>
-        <div class="label">Joan's Camera 40</div>
+        <div class="label">Joan's Camera 41</div>
         <span class="status-indicator">Main Feed Control</span>
       </div>
       <label class="switch">
@@ -459,6 +459,61 @@
       console.log("🎚️ Slider changed manually to:", newState);
       sliderStateRef.set(newState);
     });
+
+    // --- GLOBAL SILENT UNLOCK (UX Improvement) ---
+    // Attempts to unlock audio context and receiver audio on the VERY FIRST interaction
+    // anywhere on the page (e.g. toggling slider, tapping background).
+    // This removes the need for explicit "Unlock" buttons or waiting for PTT.
+    const silentUnlock = async () => {
+      console.log("👆 User interaction detected: Attempting silent audio unlock...");
+
+      // 1. Resume Global Context
+      if (audioCtx.state === 'suspended') {
+        try {
+          await audioCtx.resume();
+          console.log("✅ Global AudioContext Resumed");
+        } catch (e) {
+          console.warn("⚠️ AudioContext resume failed:", e);
+        }
+      }
+
+      // 2. Bless Receiver Audio (with valid silent WAV)
+      try {
+        if (receiverAudio.paused) {
+          receiverAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+          await receiverAudio.play();
+          // Important: Don't pause immediately, let it play the tiny silence to fully "bless" it
+          console.log("✅ Receiver Audio Blessed (Silent)");
+        }
+      } catch (e) {
+        console.warn("⚠️ Receiver bless failed (maybe already playing?):", e);
+      }
+
+      // 3. Unlock Sound Effects
+      const unlockFx = (audioObj) => {
+        if (audioObj) {
+          audioObj.muted = true;
+          audioObj.play().then(() => {
+            audioObj.pause();
+            audioObj.currentTime = 0;
+            audioObj.muted = false;
+          }).catch(() => { });
+        }
+      };
+      unlockFx(getReadyAudio);
+      unlockFx(notLiveAudio);
+
+      // Remove listeners so this only runs ONCE
+      window.removeEventListener('click', silentUnlock);
+      window.removeEventListener('touchstart', silentUnlock);
+      window.removeEventListener('keydown', silentUnlock);
+    };
+
+    // Attach global listeners
+    window.addEventListener('click', silentUnlock);
+    window.addEventListener('touchstart', silentUnlock);
+    window.addEventListener('keydown', silentUnlock);
+
   </script>
 
 </body>
