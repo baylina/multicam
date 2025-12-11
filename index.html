@@ -8,164 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg-color: #121212;
-      --card-bg: #1e1e1e;
-      --text-main: #e0e0e0;
-      --text-muted: #a0a0a0;
-      --accent-green: #00fa9a;
-      /* SpringGreen type for visibility */
-      --accent-blue: #2979ff;
-      --danger-red: #ff3d00;
-      --transition-speed: 0.3s;
-    }
-
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: 'Inter', sans-serif;
-      background-color: var(--bg-color);
-      color: var(--text-main);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      overflow: hidden;
-      /* Prevent scrollbars during animations */
-      transition: background-color var(--transition-speed) ease;
-    }
-
-    /* Tally Light States (Applied to Body Background) */
-    body.blinking {
-      animation: blink-bg 0.5s ease-in-out infinite alternate;
-    }
-
-    body.warning {
-      background-color: #b00020;
-      /* Darker red for warning static */
-    }
-
-    @keyframes blink-bg {
-      0% {
-        background-color: #b00020;
-      }
-
-      100% {
-        background-color: #000000;
-      }
-    }
-
-    /* Main Control Deck */
-    .control-deck {
-      background-color: var(--card-bg);
-      padding: 2rem;
-      border-radius: 24px;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-      width: 100%;
-      max-width: 400px;
-      display: flex;
-      flex-direction: column;
-      gap: 2rem;
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      position: relative;
-      z-index: 10;
-      /* Keep above flashing background */
-    }
-
-    .row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .label {
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: var(--text-main);
-    }
-
-    .status-indicator {
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      font-weight: 400;
-      margin-top: 4px;
-      display: block;
-    }
-
-    /* Huge Switch */
-    .switch {
-      position: relative;
-      display: inline-block;
-      width: 80px;
-      height: 44px;
-    }
-
-    .switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: #3a3a3a;
-      transition: .4s;
-      border-radius: 44px;
-      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
-    }
-
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 36px;
-      width: 36px;
-      left: 4px;
-      bottom: 4px;
-      background-color: #b0b0b0;
-      transition: .4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      /* Bouncy effect */
-      border-radius: 50%;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    }
-
-    input:checked+.slider {
-      background-color: rgba(0, 250, 154, 0.2);
-      /* Green glowish bg */
-      border: 1px solid var(--accent-green);
-    }
-
-    input:checked+.slider:before {
-      transform: translateX(36px);
-      background-color: var(--accent-green);
-      box-shadow: 0 0 10px var(--accent-green);
-    }
-
-    .divider {
-      height: 1px;
-      background-color: rgba(255, 255, 255, 0.05);
-      margin: 0.5rem 0;
-    }
-
-    @keyframes pulse {
-
-      0%,
-      100% {
-        transform: scale(1);
-        opacity: 1;
-      }
-
-      50% {
-        transform: scale(1.02);
-        opacity: 0.9;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">
 
   <!-- Firebase Configuration -->
   <script src="https://www.gstatic.com/firebasejs/9.16.0/firebase-app-compat.js"></script>
@@ -179,7 +22,7 @@
     <!-- Main Camera Toggle -->
     <div class="row">
       <div>
-        <div class="label">Joan's Camera 36</div>
+        <div class="label">Joan's Camera 37</div>
         <span class="status-indicator">Main Feed Control</span>
       </div>
       <label class="switch">
@@ -229,10 +72,10 @@
     const myUserId = 'user_' + Math.random().toString(36).substr(2, 9);
 
     // --- GLOBAL AUDIO INIT (Fixed Context & Receiver) ---
-    // Persistent AudioContext to avoid sample-rate mismatches (slow audio)
-    // FORCE 44.1kHz to ensure consistency across Mac (48kHz) and iPhone (44.1kHz)
+    // Persistent AudioContext to avoid sample-rate mismatches
+    // We allow native sample rate (e.g. 48kHz on iPhone) and allow software resampling to fix it
     const AudioContext = window.AudioContext || window.webkitAudioContext;
-    const audioCtx = new AudioContext({ sampleRate: 44100 });
+    const audioCtx = new AudioContext();
 
     // Persistent Receiver Audio Object (for iOS Autoplay policy)
     // We "bless" this object on the first user interaction (Unlock Button)
@@ -271,22 +114,7 @@
     };
 
     // Setup CSS for PTT Button dynamically
-    pttButton.style.cssText = `
-        width: 100%;
-        padding: 1.5rem;
-        font-size: 1.3rem;
-        font-weight: 700;
-        font-family: 'Inter', sans-serif;
-        cursor: pointer;
-        background: #333;
-        color: white;
-        border: 2px solid rgba(255,255,255,0.1);
-        border-radius: 16px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        user-select: none;
-        -webkit-user-select: none;
-        touch-action: manipulation;
-    `;
+    // Base styles are now in style.css (#pttButton)
 
     // 1. Listen to Channel Status (Mutex) & Auto-Reset Hung Channel
     walkieStatusRef.on('value', (snapshot) => {
@@ -503,8 +331,20 @@
           audioRecorder = new AudioRecorder(audioCtx);
         }
 
+        // SAFETY CHECK: If user released button while waiting for permissions, ABORT
+        if (!isPttPressed) {
+          console.log("⚠️ Button released during init - Aborting recording");
+          return;
+        }
+
         await audioRecorder.start();
         console.log("✅ Audio Context Started");
+
+        // Double check after start
+        if (!isPttPressed) {
+          audioRecorder.stop();
+          return;
+        }
 
         // Now request lock
         walkieStatusRef.transaction((current) => {
@@ -554,11 +394,32 @@
       walkieStreamRef.remove();
     };
 
+    // --- STRICT PTT LOGIC ---
+    let isPttPressed = false;
+
     // Bind Events (Mouse & Touch)
-    pttButton.addEventListener('mousedown', (e) => { initAndStartRecording(); });
-    window.addEventListener('mouseup', () => { if (isRecording || audioRecorder) stopTalk(); });
-    pttButton.addEventListener('touchstart', (e) => { e.preventDefault(); initAndStartRecording(); });
-    window.addEventListener('touchend', () => { if (isRecording || audioRecorder) stopTalk(); });
+    const startPtt = (e) => {
+      e.preventDefault(); // Prevent ghost clicks
+      if (isPttPressed) return;
+      isPttPressed = true;
+      initAndStartRecording();
+    };
+
+    const stopPtt = (e) => {
+      if (e) e.preventDefault();
+      isPttPressed = false;
+      if (isRecording || audioRecorder) stopTalk();
+    };
+
+    pttButton.addEventListener('mousedown', startPtt);
+    pttButton.addEventListener('touchstart', startPtt);
+
+    // Stop on ANY release/cancel/leave
+    window.addEventListener('mouseup', stopPtt);
+    window.addEventListener('touchend', stopPtt);
+    window.addEventListener('touchcancel', stopPtt);
+    // Safety: if mouse leaves window while held
+    window.addEventListener('mouseleave', stopPtt);
 
     // --- Slider Logic ---
 
