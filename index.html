@@ -335,58 +335,91 @@
       }
     });
 
-    // --- Audio Queue (Gapless Playback Logic) ---
-    class AudioQueue {
-      constructor() {
-        this.queue = [];
-        this.isPlaying = false;
-      }
+    // --- MediaSource API (Streaming Logic) ---
 
-      add(base64Audio) {
-        this.queue.push(base64Audio);
-        if (!this.isPlaying) {
-          this.playNext();
+    // Queue to hold ArrayBuffers before appending
+    const bufferQueue = [];
+    let sourceBuffer = null;
+    let isAppending = false;
+
+    // AUDIO CONTEXT (For playback)
+    const remoteAudio = new Audio();
+    const mediaSource = new MediaSource();
+
+    // Function to process the buffer queue
+    const processQueue = () => {
+      if (sourceBuffer && !sourceBuffer.updating && bufferQueue.length > 0) {
+        const data = bufferQueue.shift();
+        try {
+          sourceBuffer.appendBuffer(data);
+        } catch (e) {
+          console.error("Error appending buffer:", e);
         }
       }
+    };
 
-      playNext() {
-        if (this.queue.length === 0) {
-          this.isPlaying = false;
-          return;
-        }
-
-        this.isPlaying = true;
-        const base64Audio = this.queue.shift();
-        const audio = new Audio(base64Audio);
-
-        audio.onended = () => {
-          this.playNext();
-        };
-
-        audio.onerror = (e) => {
-          console.error("Audio playback error", e);
-          this.playNext();
-        };
-
-        audio.play().catch(e => {
-          console.error("Autoplay prevented or error", e);
-          this.playNext();
-        });
+    // Helper: Convert Base64 to ArrayBuffer
+    const base64ToArrayBuffer = (base64) => {
+      const binary_string = window.atob(base64);
+      const len = binary_string.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binary_string.charCodeAt(i);
       }
-    }
+      return bytes.buffer;
+    };
 
-    const incomingAudioQueue = new AudioQueue();
+    // Setup MediaSource when we expect stream
+    const setupMediaSource = () => {
+      remoteAudio.src = URL.createObjectURL(mediaSource);
 
-    // 2. Play Audio Stream
+      mediaSource.addEventListener('sourceopen', () => {
+        // NOTE: Codec MUST match what MediaRecorder sends.
+        // Chrome/Firefox usually record in webm/opus.
+        const mime = 'audio/webm; codecs=opus';
+        if (MediaSource.isTypeSupported(mime)) {
+          sourceBuffer = mediaSource.addSourceBuffer(mime);
+          sourceBuffer.mode = 'sequence'; // Timestamp is inferred from usage
+
+          sourceBuffer.addEventListener('updateend', () => {
+            processQueue();
+          });
+        } else {
+          console.error("Codec not supported for MSE:", mime);
+          alert("Browser codec mismatch. Try Chrome or Firefox.");
+        }
+      });
+
+      // Try to unlock autoplay
+      remoteAudio.play().catch(e => console.log("Waiting for user interaction to play audio."));
+    };
+
+    // Initialize MediaSource once
+    setupMediaSource();
+
+    // 2. Play Audio Stream (Receiver)
     walkieStreamRef.on('child_added', (snapshot) => {
       const data = snapshot.val();
-      // Only play if it's NOT my audio
+
+      // Do not play my own audio (echo cancellation)
       if (data.user !== myUserId) {
-        incomingAudioQueue.add(data.audio);
+        // Convert Base64 -> ArrayBuffer
+        const arrayBuffer = base64ToArrayBuffer(data.audio);
+
+        // Push to queue
+        bufferQueue.push(arrayBuffer);
+
+        // Try to process
+        processQueue();
+
+        // Ensure audio is playing if paused/stalled
+        if (remoteAudio.paused) {
+          remoteAudio.play().catch(e => console.log("Autoplay block"));
+        }
       }
     });
 
-    // 3. Start Recording (Request Mutex)
+    // 3. Start Recording (Sender)
     const requestTalk = () => {
       // Try to claim the channel
       walkieStatusRef.transaction((current) => {
@@ -406,22 +439,30 @@
       walkieStatusRef.set(null); // Release lock
       // Optional: clear stream to save space/bandwidth for new session
       walkieStreamRef.remove();
+
+      // We don't easily reset MSE without re-init, so clean slate approach
+      // In a robust app we'd re-create MediaSource here for next person.
     };
 
     // Initialize Media Recorder
     const startRecording = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
+        // Use optimal codec for MSE
+        const options = { mimeType: 'audio/webm; codecs=opus' };
+        mediaRecorder = new MediaRecorder(stream, options);
         isRecording = true;
 
         mediaRecorder.ondataavailable = (e) => {
           if (e.data.size > 0) {
+            // Blob -> ArrayBuffer -> Base64
             const reader = new FileReader();
             reader.readAsDataURL(e.data);
             reader.onloadend = () => {
-              const base64Audio = reader.result;
-              // Push chunk to Firebase
+              // result is "data:audio/webm;base64,GkXfo..."
+              // We need just the Base64 part
+              const base64Audio = reader.result.split(',')[1];
+
               walkieStreamRef.push({
                 user: myUserId,
                 audio: base64Audio,
@@ -431,11 +472,12 @@
           }
         };
 
-        mediaRecorder.start(250); // Slice every 250ms for low latency
+        // Send small chunks (100ms) for real-time feel
+        mediaRecorder.start(100);
       } catch (err) {
-        console.error("Mic access denied:", err);
-        alert("Microphone access is required for Walkie Talkie.");
-        walkieStatusRef.set(null); // Release lock if we can't record
+        console.error("Mic access/codec error:", err);
+        alert("Microphone or Codec issue. Required: audio/webm; codecs=opus");
+        walkieStatusRef.set(null);
       }
     };
 
