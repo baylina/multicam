@@ -179,7 +179,7 @@
     <!-- Main Camera Toggle -->
     <div class="row">
       <div>
-        <div class="label">Joan's Camera 30</div>
+        <div class="label">Joan's Camera 31</div>
         <span class="status-indicator">Main Feed Control</span>
       </div>
       <label class="switch">
@@ -251,7 +251,18 @@
 
     // --- Walkie Talkie Logic ---
     const myUserId = 'user_' + Math.random().toString(36).substr(2, 9);
-    let audioRecorder = null; // Use custom recorder
+
+    // --- GLOBAL AUDIO INIT (Fixed Context & Receiver) ---
+    // Persistent AudioContext to avoid sample-rate mismatches (slow audio)
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = new AudioContext();
+
+    // Persistent Receiver Audio Object (for iOS Autoplay policy)
+    // We "bless" this object on the first user interaction (Unlock Button)
+    const receiverAudio = new Audio();
+    receiverAudio.setAttribute('playsinline', 'true'); // Helpful for iOS
+
+    let audioRecorder = null;
     let isRecording = false;
 
     // UI Styles for PTT
@@ -278,7 +289,7 @@
         pttButton.style.background = "#1a1a1a";
         pttButton.style.opacity = "0.5";
         pttStatus.innerText = `${who || 'Someone'} is talking...`;
-        pttStatus.style.color = "#00fa9a"; // Green text for listening
+        pttStatus.style.color = "#00fa9a";
       }
     };
 
@@ -303,78 +314,65 @@
     // 1. Listen to Channel Status (Mutex) & Auto-Reset Hung Channel
     walkieStatusRef.on('value', (snapshot) => {
       const status = snapshot.val();
-
-      // AUTO-RESET: If channel is busy for > 30 seconds, force clear it
+      // AUTO-RESET: If channel is busy for > 30 seconds
       if (status && (Date.now() - status.timestamp > 30000)) {
         console.log("⚠️ Channel timed out! Resetting...");
         walkieStatusRef.set(null);
         return;
       }
-
       if (!status) {
         updatePttUI('idle');
       } else if (status.user === myUserId) {
-        // I obtained the lock!
         updatePttUI('talking');
-        // Note: Recording starts in the mousedown handler now to ensure user gesture
       } else {
-        // Someone else has the lock
         updatePttUI('busy', "Someone");
       }
     });
 
-    // --- CUSTOM WAV RECORDER (UNIVERSAL COMPATIBILITY) ---
-    // Since MediaRecorder in Chrome Mac produces WebM that Safari often rejects,
-    // we implement a manual WAV encoder using ScriptProcessor (or AudioWorklet if available, but ScriptProcessor is wider)
-    // This guarantees a standard PCM WAV file that plays everywhere.
-
+    // --- CUSTOM WAV RECORDER (Uses Global Context) ---
     class AudioRecorder {
-      constructor() {
-        this.audioContext = null;
+      constructor(context) {
+        this.context = context;
         this.mediaStream = null;
         this.scriptProcessor = null;
         this.inputSource = null;
         this.chunks = [];
         this.isRecording = false;
-        this.sampleRate = 44100;
-        this.onDataAvailable = null;
+        this.sampleRate = this.context.sampleRate;
         this.onStop = null;
       }
 
       async start() {
-        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        if (this.audioContext.state === 'suspended') {
-          await this.audioContext.resume();
+        if (this.context.state === 'suspended') {
+          await this.context.resume();
         }
-        this.sampleRate = this.audioContext.sampleRate;
+        this.sampleRate = this.context.sampleRate;
+        console.log("Recorder started. Rate:", this.sampleRate);
 
         this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        this.inputSource = this.audioContext.createMediaStreamSource(this.mediaStream);
+        this.inputSource = this.context.createMediaStreamSource(this.mediaStream);
 
-        // Use simpler ScriptProcessor for wider compatibility (even if deprecated)
-        // bufferSize: 4096 (good balance of latency/performance)
-        this.scriptProcessor = this.audioContext.createScriptProcessor(4096, 1, 1);
-
+        // bufferSize: 4096 
+        this.scriptProcessor = this.context.createScriptProcessor(4096, 1, 1);
         this.chunks = [];
         this.isRecording = true;
 
         this.scriptProcessor.onaudioprocess = (e) => {
           if (!this.isRecording) return;
           const inputData = e.inputBuffer.getChannelData(0);
-          // Clone data
           this.chunks.push(new Float32Array(inputData));
         };
 
         this.inputSource.connect(this.scriptProcessor);
-        this.scriptProcessor.connect(this.audioContext.destination); // Needed for processing to happen
+        this.scriptProcessor.connect(this.context.destination);
       }
 
       stop() {
         this.isRecording = false;
+        // Stop stream but DO NOT close global context
         if (this.mediaStream) this.mediaStream.getTracks().forEach(t => t.stop());
         if (this.scriptProcessor) this.scriptProcessor.disconnect();
         if (this.inputSource) this.inputSource.disconnect();
-        if (this.audioContext) this.audioContext.close();
 
         // Merge chunks
         const length = this.chunks.reduce((acc, chunk) => acc + chunk.length, 0);
@@ -385,36 +383,28 @@
           offset += chunk.length;
         }
 
-        // Encode to WAV
         const wavBlob = this.encodeWAV(buffer);
-
-        if (this.onStop) {
-          this.onStop(wavBlob);
-        }
+        if (this.onStop) this.onStop(wavBlob);
       }
 
       encodeWAV(samples) {
         const buffer = new ArrayBuffer(44 + samples.length * 2);
         const view = new DataView(buffer);
 
-        // write WAV header
         this.writeString(view, 0, 'RIFF');
         view.setUint32(4, 36 + samples.length * 2, true);
         this.writeString(view, 8, 'WAVE');
         this.writeString(view, 12, 'fmt ');
         view.setUint32(16, 16, true);
-        view.setUint16(20, 1, true); // PCM
-        view.setUint16(22, 1, true); // Mono
+        view.setUint16(20, 1, true);
+        view.setUint16(22, 1, true);
         view.setUint32(24, this.sampleRate, true);
         view.setUint32(28, this.sampleRate * 2, true);
         view.setUint16(32, 2, true);
         view.setUint16(34, 16, true);
         this.writeString(view, 36, 'data');
         view.setUint32(40, samples.length * 2, true);
-
-        // write PCM samples
         this.floatTo16BitPCM(view, 44, samples);
-
         return new Blob([view], { type: 'audio/wav' });
       }
 
@@ -434,55 +424,59 @@
 
     // --- Detect iOS/Safari for compatibility ---
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    const supportsMediaSource = 'MediaSource' in window && MediaSource.isTypeSupported('audio/webm; codecs=opus');
-    const useStreamingMode = !isIOS && supportsMediaSource;
 
     if (isIOS) {
-      console.log("iOS detected: Using offline (complete file) mode for walkie talkie");
       pttStatus.innerText = "iOS Mode (Offline)";
-    } else if (!supportsMediaSource) {
-      console.log("MediaSource not supported: Using offline mode");
+    } else {
       pttStatus.innerText = "Offline Mode (WAV Sender)";
     }
 
-    // 2. Play Audio Stream (Receiver) - DUAL MODE
-    console.log("Setting up walkieStreamRef listener...");
+    // 2. Play Audio Stream (Receiver) - USES GLOBAL RECEIVER
     walkieStreamRef.on('child_added', (snapshot) => {
-      console.log("🔊 Firebase child_added triggered!");
       const data = snapshot.val();
 
       if (data.user !== myUserId) {
-        console.log("✅ Audio from another user, attempting to play...");
+        console.log("✅ Audio received...");
 
         let rawMime = data.mimeType || 'audio/wav';
         const simpleMime = rawMime.split(';')[0];
         const dataUrl = 'data:' + simpleMime + ';base64,' + data.audio;
 
-        const audio = new Audio(dataUrl);
-        audio.addEventListener('loadeddata', () => {
+        // USE GLOBAL RECEIVER
+        receiverAudio.src = dataUrl;
+        receiverAudio.onloadeddata = () => {
           pttStatus.innerText = "Receiving Message...";
-          setTimeout(() => pttStatus.innerText = "Channel Ready", 2000);
-        });
+        };
 
-        audio.play()
-          .then(() => console.log("✅ Audio playing!"))
+        receiverAudio.play()
+          .then(() => {
+            console.log("✅ Audio playing!");
+            setTimeout(() => pttStatus.innerText = "Channel Ready", 2000);
+          })
           .catch(e => {
-            console.error("❌ Audio play error:", e);
-            // If auto-play blocked, try to show unlock button again or rely on user interaction
-            // (But usually unlockAudio() handled this global unlock already)
+            console.error("❌ Audio play error (Locked?):", e);
+            pttStatus.innerText = "TAP UNLOCK!";
+            const btn = document.getElementById('unlockAudioBtn');
+            if (btn) btn.style.display = 'block';
           });
       }
     });
 
-    // 3. Start Recording Logic (Refactored for User Gesture)
+    // 3. Start Recording Logic (Uses Global audioCtx)
     const initAndStartRecording = async () => {
       try {
         console.log("🎙️ Initializing Audio Recorder...");
-        if (!audioRecorder) {
-          audioRecorder = new AudioRecorder();
+        // Ensure Global Context is Running
+        if (audioCtx.state === 'suspended') {
+          await audioCtx.resume();
         }
 
-        await audioRecorder.start(); // Must be awaited in user gesture
+        if (!audioRecorder) {
+          // Pass global context
+          audioRecorder = new AudioRecorder(audioCtx);
+        }
+
+        await audioRecorder.start();
         console.log("✅ Audio Context Started");
 
         // Now request lock
@@ -496,7 +490,7 @@
           if (committed) {
             isRecording = true;
           } else {
-            console.log("❌ Could not get lock, stopping audio");
+            console.log("❌ Could not get lock, stopping");
             audioRecorder.stop();
           }
         });
@@ -510,17 +504,14 @@
     const stopTalk = () => {
       if (audioRecorder && isRecording) {
         console.log("🛑 Stopping recording...");
-
-        // Define onStop handler right before stopping to capture this specific clip
         audioRecorder.onStop = (wavBlob) => {
-          console.log("🛑 Recording stopped. WAV Blob size:", wavBlob.size);
-          if (wavBlob.size < 1000) { console.warn("Audio too small, ignoring"); return; }
+          console.log("🛑 Recording stopped. Size:", wavBlob.size);
+          if (wavBlob.size < 1000) return;
 
           const reader = new FileReader();
           reader.readAsDataURL(wavBlob);
           reader.onloadend = () => {
             const base64Audio = reader.result.split(',')[1];
-            console.log("📤 Sending WAV audio...");
             walkieStreamRef.push({
               user: myUserId,
               audio: base64Audio,
@@ -529,7 +520,6 @@
             });
           };
         };
-
         audioRecorder.stop();
         isRecording = false;
       }
@@ -537,17 +527,10 @@
       walkieStreamRef.remove();
     };
 
-
-    // Bind Events (Mouse & Touch for Mobile) - DIRECTLY CALL INIT
-    pttButton.addEventListener('mousedown', (e) => {
-      initAndStartRecording();
-    });
+    // Bind Events (Mouse & Touch)
+    pttButton.addEventListener('mousedown', (e) => { initAndStartRecording(); });
     window.addEventListener('mouseup', () => { if (isRecording || audioRecorder) stopTalk(); });
-
-    pttButton.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      initAndStartRecording();
-    });
+    pttButton.addEventListener('touchstart', (e) => { e.preventDefault(); initAndStartRecording(); });
     window.addEventListener('touchend', () => { if (isRecording || audioRecorder) stopTalk(); });
 
     // --- Slider Logic ---
@@ -583,17 +566,24 @@
     });
 
     // --- Global Unlock Function for Button ---
+    // --- Global Unlock Function for Button ---
     window.unlockAudio = function () {
       console.log("🖱️  UNLOCK FUNCTION CALLED!");
-      // Unlock main AudioContext (if any)
-      const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
-      silentAudio.play().then(() => {
-        console.log("✅ Main audio unlocked");
-        // Hide button
+
+      // 1. Resume Global Audio Context (Fixes 'suspended' state & Rate Mismatch)
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().then(() => console.log("✅ Global Context Resumed"));
+      }
+
+      // 2. Bless the Receiver Audio Object (Critical for iOS Autoplay)
+      // Play a tiny silent snippet to authorize this specific element
+      receiverAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+      receiverAudio.play().then(() => {
+        console.log("✅ Receiver Audio 'Blessed' by user interaction");
         document.getElementById('unlockAudioBtn').style.display = 'none';
       }).catch(e => console.error("Unlock failed", e));
 
-      // Unlock sound effects
+      // 3. Unlock sound effects
       if (getReadyAudio) { getReadyAudio.muted = true; getReadyAudio.play().then(() => { getReadyAudio.pause(); getReadyAudio.currentTime = 0; getReadyAudio.muted = false; }); }
       if (notLiveAudio) { notLiveAudio.muted = true; notLiveAudio.play().then(() => { notLiveAudio.pause(); notLiveAudio.currentTime = 0; notLiveAudio.muted = false; }); }
     };
