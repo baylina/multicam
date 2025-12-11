@@ -179,7 +179,7 @@
     <!-- Main Camera Toggle -->
     <div class="row">
       <div>
-        <div class="label">Joan's Camera 32</div>
+        <div class="label">Joan's Camera 33</div>
         <span class="status-indicator">Main Feed Control</span>
       </div>
       <label class="switch">
@@ -392,17 +392,21 @@
         const buffer = new ArrayBuffer(44 + samples.length * 2);
         const view = new DataView(buffer);
 
+        // ALWAYS write 44.1kHz to the WAV header for universal compatibility
+        // Even if the context runs at different rate, we force 44.1kHz output
+        const targetSampleRate = 44100;
+
         this.writeString(view, 0, 'RIFF');
         view.setUint32(4, 36 + samples.length * 2, true);
         this.writeString(view, 8, 'WAVE');
         this.writeString(view, 12, 'fmt ');
         view.setUint32(16, 16, true);
-        view.setUint16(20, 1, true);
-        view.setUint16(22, 1, true);
-        view.setUint32(24, this.sampleRate, true);
-        view.setUint32(28, this.sampleRate * 2, true);
-        view.setUint16(32, 2, true);
-        view.setUint16(34, 16, true);
+        view.setUint16(20, 1, true); // PCM
+        view.setUint16(22, 1, true); // Mono
+        view.setUint32(24, targetSampleRate, true); // FORCE 44.1kHz
+        view.setUint32(28, targetSampleRate * 2, true); // Byte rate
+        view.setUint16(32, 2, true); // Block align
+        view.setUint16(34, 16, true); // Bits per sample
         this.writeString(view, 36, 'data');
         view.setUint32(40, samples.length * 2, true);
         this.floatTo16BitPCM(view, 44, samples);
@@ -578,31 +582,65 @@
         btn.disabled = true;
       }
 
-      // 1. Resume Global Audio Context (Fixes 'suspended' state & Rate Mismatch)
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume().then(() => console.log("✅ Global Context Resumed"));
-      }
-
-      // 2. Bless the Receiver Audio Object (Critical for iOS Autoplay)
-      // Play a tiny silent snippet to authorize this specific element
-      receiverAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
-      receiverAudio.play().then(() => {
-        console.log("✅ Receiver Audio 'Blessed' by user interaction");
-        if (btn) {
-          btn.style.display = 'none';
-        }
-      }).catch(e => {
-        console.error("Unlock failed", e);
-        if (btn) {
+      // Safety timeout: if unlock doesn't complete in 3s, allow retry
+      const timeoutId = setTimeout(() => {
+        if (btn && btn.innerText === "⏳ UNLOCKING...") {
+          console.warn("Unlock timeout, allowing retry");
           btn.innerText = "❌ TAP AGAIN";
           btn.style.opacity = "1";
           btn.disabled = false;
         }
-      });
+      }, 3000);
 
-      // 3. Unlock sound effects
-      if (getReadyAudio) { getReadyAudio.muted = true; getReadyAudio.play().then(() => { getReadyAudio.pause(); getReadyAudio.currentTime = 0; getReadyAudio.muted = false; }); }
-      if (notLiveAudio) { notLiveAudio.muted = true; notLiveAudio.play().then(() => { notLiveAudio.pause(); notLiveAudio.currentTime = 0; notLiveAudio.muted = false; }); }
+      // 1. Resume Global Audio Context
+      const contextPromise = audioCtx.state === 'suspended'
+        ? audioCtx.resume()
+        : Promise.resolve();
+
+      contextPromise.then(() => {
+        console.log("✅ Global Context Ready");
+
+        // 2. Bless the Receiver Audio Object
+        // Use a slightly longer silent WAV for better iOS compatibility
+        const silentWav = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAAABkYXRhAAAAAA==';
+        receiverAudio.src = silentWav;
+
+        return receiverAudio.play();
+      })
+        .then(() => {
+          console.log("✅ Receiver Audio Blessed");
+          clearTimeout(timeoutId);
+          if (btn) {
+            btn.style.display = 'none';
+          }
+
+          // 3. Unlock sound effects
+          if (getReadyAudio) {
+            getReadyAudio.muted = true;
+            getReadyAudio.play().then(() => {
+              getReadyAudio.pause();
+              getReadyAudio.currentTime = 0;
+              getReadyAudio.muted = false;
+            }).catch(() => { });
+          }
+          if (notLiveAudio) {
+            notLiveAudio.muted = true;
+            notLiveAudio.play().then(() => {
+              notLiveAudio.pause();
+              notLiveAudio.currentTime = 0;
+              notLiveAudio.muted = false;
+            }).catch(() => { });
+          }
+        })
+        .catch(e => {
+          console.error("Unlock failed:", e);
+          clearTimeout(timeoutId);
+          if (btn) {
+            btn.innerText = "❌ TAP AGAIN";
+            btn.style.opacity = "1";
+            btn.disabled = false;
+          }
+        });
     };
   </script>
 
