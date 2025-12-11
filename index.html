@@ -22,7 +22,7 @@
     <!-- Main Camera Toggle -->
     <div class="row">
       <div>
-        <div class="label">Joan's Camera 38</div>
+        <div class="label">Joan's Camera 39</div>
         <span class="status-indicator">Main Feed Control</span>
       </div>
       <label class="switch">
@@ -293,8 +293,8 @@
             setTimeout(() => pttStatus.innerText = "Channel Ready", 2000);
           })
           .catch(e => {
-            console.error("❌ Audio play error (Autoplay blocked):", e);
-            // Silent fail - user needs to interact with page first
+            console.error("❌ Audio play error:", e);
+            console.error("Error details:", e.message, e.name);
             pttStatus.innerText = "Tap Hold to Talk first";
             pttStatus.style.color = "#ff9800";
           });
@@ -410,7 +410,7 @@
     };
 
     const stopPtt = (e) => {
-      if (e) e.preventDefault();
+      // DO NOT preventDefault here, or you block slider/clicks elsewhere!
       isPttPressed = false;
       if (isRecording || audioRecorder) stopTalk();
     };
